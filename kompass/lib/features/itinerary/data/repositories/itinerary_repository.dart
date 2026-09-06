@@ -1,53 +1,60 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../core/errors/app_exception.dart';
+import '../../../../core/constants/firestore_constants.dart';
 import '../models/itinerary_model.dart';
 
-class ItineraryRepository {
-  ItineraryRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+abstract class ItineraryRepository {
+  Future<String> createItinerary(String tourId, ItineraryModel itinerary);
+  Future<void> updateItinerary(String tourId, ItineraryModel itinerary);
+  Future<void> deleteItinerary(String tourId, String itineraryId);
+  Stream<List<ItineraryModel>> watchItineraries(String tourId);
+}
 
+class FirebaseItineraryRepository implements ItineraryRepository {
   final FirebaseFirestore _firestore;
 
-  CollectionReference<Map<String, dynamic>> _itineraryRef(String tourId) =>
-      _firestore
-          .collection('Tours')
-          .doc(tourId)
-          .collection('Itineraries');
+  FirebaseItineraryRepository(this._firestore);
 
-  Future<void> addItinerary(String tourId, ItineraryModel itinerary) async {
-    try {
-      await _itineraryRef(tourId).add(itinerary.toJson());
-    } catch (e) {
-      throw DatabaseException('Failed to add itinerary: $e');
-    }
+  CollectionReference<Map<String, dynamic>> _getItineraryCollection(String tourId) {
+    return _firestore
+        .collection(FirestoreConstants.toursCollection)
+        .doc(tourId)
+        .collection('Itinerary');
   }
 
+  @override
+  Future<String> createItinerary(String tourId, ItineraryModel itinerary) async {
+    final json = itinerary.toJson();
+    json.remove('itineraryId');
+    json['createdAt'] = FieldValue.serverTimestamp();
+    json['date'] = Timestamp.parse(itinerary.date.toIso8601String());
+
+    final docRef = await _getItineraryCollection(tourId).add(json);
+    return docRef.id;
+  }
+
+  @override
+  Future<void> updateItinerary(String tourId, ItineraryModel itinerary) async {
+    final json = itinerary.toJson();
+    json.remove('itineraryId');
+    json['date'] = Timestamp.parse(itinerary.date.toIso8601String());
+    
+    await _getItineraryCollection(tourId)
+        .doc(itinerary.itineraryId)
+        .update(json);
+  }
+
+  @override
+  Future<void> deleteItinerary(String tourId, String itineraryId) async {
+    await _getItineraryCollection(tourId).doc(itineraryId).delete();
+  }
+
+  @override
   Stream<List<ItineraryModel>> watchItineraries(String tourId) {
-    return _itineraryRef(tourId)
+    return _getItineraryCollection(tourId)
         .orderBy('date')
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(ItineraryModel.fromFirestore).toList());
-  }
-
-  Future<void> updateItinerary(
-    String tourId,
-    ItineraryModel itinerary,
-  ) async {
-    try {
-      await _itineraryRef(tourId)
-          .doc(itinerary.itineraryId)
-          .update(itinerary.toJson());
-    } catch (e) {
-      throw DatabaseException('Failed to update itinerary: $e');
-    }
-  }
-
-  Future<void> deleteItinerary(String tourId, String itineraryId) async {
-    try {
-      await _itineraryRef(tourId).doc(itineraryId).delete();
-    } catch (e) {
-      throw DatabaseException('Failed to delete itinerary: $e');
-    }
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ItineraryModel.fromFirestore(doc))
+            .toList());
   }
 }

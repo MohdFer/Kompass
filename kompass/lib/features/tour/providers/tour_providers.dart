@@ -1,30 +1,46 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../data/models/tour_model.dart';
 import '../data/repositories/tour_repository.dart';
 
-final tourRepositoryProvider = Provider<TourRepository>((ref) {
-  return TourRepository();
-});
+part 'tour_providers.g.dart';
 
-/// Watches all tours (admin view).
-final allToursProvider = StreamProvider<List<TourModel>>((ref) {
-  return ref.watch(tourRepositoryProvider).watchTours();
-});
+@riverpod
+TourRepository tourRepository(TourRepositoryRef ref) {
+  return FirebaseTourRepository(FirebaseFirestore.instance);
+}
 
-/// Watches tours assigned to a specific guide.
-final guideToursProvider =
-    StreamProvider.family<List<TourModel>, String>((ref, guideId) {
-  return ref.watch(tourRepositoryProvider).watchTours(guideId: guideId);
-});
+@riverpod
+Stream<List<TourModel>> tours(ToursRef ref) {
+  return ref.watch(tourRepositoryProvider).watchAllTours();
+}
 
-/// Watches tours where a user is a participant.
-final participantToursProvider =
-    StreamProvider.family<List<TourModel>, String>((ref, userId) {
-  return ref.watch(tourRepositoryProvider).watchParticipantTours(userId);
-});
+@riverpod
+Stream<TourModel> tourDetail(TourDetailRef ref, String tourId) {
+  return ref.watch(tourRepositoryProvider).watchTour(tourId);
+}
 
-/// Fetches a single tour by ID.
-final tourDetailProvider =
-    FutureProvider.family<TourModel?, String>((ref, tourId) {
-  return ref.watch(tourRepositoryProvider).getTour(tourId);
-});
+@riverpod
+class TourController extends _$TourController {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> createTour(TourModel tour) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() =>
+        ref.read(tourRepositoryProvider).createTour(tour));
+  }
+
+  Future<void> updateTour(TourModel tour) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() =>
+        ref.read(tourRepositoryProvider).updateTour(tour));
+  }
+
+  Future<void> deleteTour(String tourId) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() =>
+        ref.read(tourRepositoryProvider).deleteTour(tourId));
+  }
+}

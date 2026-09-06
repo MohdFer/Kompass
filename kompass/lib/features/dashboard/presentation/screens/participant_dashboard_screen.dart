@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/widgets/kompass_app_bar.dart';
-import '../../../../routing/route_names.dart';
+import '../../../../core/widgets/kompass_button.dart';
 import '../../../auth/providers/auth_providers.dart';
 
 class ParticipantDashboardScreen extends ConsumerWidget {
@@ -12,47 +10,43 @@ class ParticipantDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final userState = ref.watch(currentUserProvider);
+    final userName = userState.value?.name ?? 'Participant';
+
     return Scaffold(
-      appBar: KompassAppBar(
-        title: 'Explorer\'s Journal',
-        showCompass: true,
+      appBar: AppBar(
+        title: const Text('Dashboard'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await ref.read(authNotifierProvider.notifier).signOut();
-              if (context.mounted) context.goNamed(RouteNames.login);
+            onPressed: () {
+              ref.read(authControllerProvider.notifier).signOut();
             },
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text('Your Adventures', style: AppTextStyles.headlineLarge),
-          const SizedBox(height: 8),
-          Text(
-            'Every journey begins with a single step.',
-            style: AppTextStyles.bodyMedium.copyWith(
-              color: AppColors.textHint,
-              fontStyle: FontStyle.italic,
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Welcome, $userName!', style: AppTextStyles.headlineLarge),
+            const SizedBox(height: 32),
+            const Center(
+              child: Text(
+                'You are not currently in an active tour.',
+                style: AppTextStyles.bodyLarge,
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-          // TODO: List participant's tours
-          Center(
-            child: Column(
-              children: [
-                const Icon(Icons.sailing, size: 64, color: AppColors.sandDark),
-                const SizedBox(height: 16),
-                Text(
-                  'No active voyages yet',
-                  style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textHint),
-                ),
-              ],
+            const SizedBox(height: 16),
+            KompassButton(
+              text: 'Join Tour',
+              onPressed: () {
+                // Placeholder
+              },
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

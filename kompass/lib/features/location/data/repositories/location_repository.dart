@@ -1,34 +1,31 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../../core/constants/firestore_constants.dart';
-import '../../../../core/errors/app_exception.dart';
 import '../models/location_model.dart';
 
 class LocationRepository {
+  final FirebaseFirestore _firestore;
+
   LocationRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  final FirebaseFirestore _firestore;
-
-  CollectionReference<Map<String, dynamic>> get _locationsRef =>
-      _firestore.collection(FirestoreConstants.locationsCollection);
-
-  /// Update a user's location in Firestore.
-  Future<void> updateLocation(LocationModel location) async {
-    try {
-      await _locationsRef
-          .doc('${location.tourId}_${location.userId}')
-          .set(location.toFirestore(), SetOptions(merge: true));
-    } catch (e) {
-      throw LocationException('Failed to update location: $e');
-    }
+  Future<void> saveLocation(LocationModel location) async {
+    await _firestore
+        .collection('Locations')
+        .doc(location.locationId)
+        .set(location.toFirestore());
   }
 
-  /// Watch all participant locations for a specific tour.
-  Stream<List<LocationModel>> watchTourLocations(String tourId) {
-    return _locationsRef
-        .where('tourId', isEqualTo: tourId)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(LocationModel.fromFirestore).toList());
+  Stream<List<LocationModel>> streamLocations() {
+    return _firestore.collection('Locations').snapshots().map((snapshot) {
+      return snapshot.docs
+          .map((doc) => LocationModel.fromFirestore(doc))
+          .toList();
+    });
+  }
+
+  Future<List<LocationModel>> getLocations() async {
+    final snapshot = await _firestore.collection('Locations').get();
+    return snapshot.docs
+        .map((doc) => LocationModel.fromFirestore(doc))
+        .toList();
   }
 }
