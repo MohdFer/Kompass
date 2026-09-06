@@ -1,72 +1,61 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '../../../core/enums/user_role.dart';
 import '../data/models/user_model.dart';
 import '../data/repositories/auth_repository.dart';
 
-/// Provider for the AuthRepository instance.
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository();
-});
+part 'auth_providers.g.dart';
 
-/// Stream provider that emits the current Firebase Auth user.
-final authStateProvider = StreamProvider<User?>((ref) {
-  return ref.watch(authRepositoryProvider).authStateChanges;
-});
-
-/// Provider that fetches and caches the current user's KOMPASS profile.
-final currentUserProvider = FutureProvider<UserModel?>((ref) async {
-  final authState = ref.watch(authStateProvider);
-  return authState.when(
-    data: (user) async {
-      if (user == null) return null;
-      return ref.read(authRepositoryProvider).getUserProfile(user.uid);
-    },
-    loading: () => null,
-    error: (_, __) => null,
+@riverpod
+AuthRepository authRepository(AuthRepositoryRef ref) {
+  return FirebaseAuthRepository(
+    FirebaseAuth.instance,
+    FirebaseFirestore.instance,
   );
-});
+}
 
-/// StateNotifier for managing auth loading/error UI state.
-class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
-  AuthNotifier(this._repository) : super(const AsyncValue.data(null));
+@riverpod
+Stream<User?> authStateChanges(AuthStateChangesRef ref) {
+  return ref.watch(authRepositoryProvider).authStateChanges();
+}
 
-  final AuthRepository _repository;
+@riverpod
+Future<UserModel?> currentUser(CurrentUserRef ref) async {
+  final authUser = ref.watch(authStateChangesProvider).value;
+  if (authUser == null) return null;
+  return ref.watch(authRepositoryProvider).getUserData(authUser.uid);
+}
 
-  Future<void> signIn({required String email, required String password}) async {
+@riverpod
+class AuthController extends _$AuthController {
+  @override
+  FutureOr<void> build() {}
+
+  Future<void> signIn(String email, String password) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      return _repository.signIn(email: email, password: password);
-    });
+    state = await AsyncValue.guard(() => 
+      ref.read(authRepositoryProvider).signInWithEmailAndPassword(email, password)
+    );
   }
 
-  Future<void> register({
-    required String name,
-    required String email,
-    required String password,
-    required String role,
-  }) async {
+  Future<void> register(String name, String email, String password, UserRole role) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() async {
-      return _repository.register(
-        name: name,
-        email: email,
-        password: password,
-        role: role,
-      );
-    });
+    state = await AsyncValue.guard(() => 
+      ref.read(authRepositoryProvider).registerWithEmailAndPassword(name, email, password, role)
+    );
   }
 
   Future<void> signOut() async {
-    await _repository.signOut();
-    state = const AsyncValue.data(null);
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => ref.read(authRepositoryProvider).signOut());
   }
 
-  Future<void> resetPassword(String email) async {
-    await _repository.resetPassword(email);
+  Future<void> sendPasswordResetEmail(String email) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() => 
+      ref.read(authRepositoryProvider).sendPasswordResetEmail(email)
+    );
   }
 }
-
-final authNotifierProvider =
-    StateNotifierProvider<AuthNotifier, AsyncValue<UserModel?>>((ref) {
-  return AuthNotifier(ref.watch(authRepositoryProvider));
-});

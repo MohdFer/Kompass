@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/utils/validators.dart';
-import '../../../../core/widgets/kompass_button.dart';
-import '../../../../routing/route_names.dart';
-import '../../providers/auth_providers.dart';
+
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/widgets/kompass_button.dart';
+import '../../../core/widgets/kompass_card.dart';
+import '../../../routing/route_names.dart';
+import '../providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -19,7 +21,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -28,140 +29,136 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    await ref.read(authNotifierProvider.notifier).signIn(
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-    );
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      ref.read(authControllerProvider.notifier).signIn(
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+          );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
 
-    ref.listen(authNotifierProvider, (previous, next) {
-      next.whenOrNull(
-        error: (error, _) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.toString()), backgroundColor: AppColors.error),
-          );
-        },
-        data: (user) {
-          if (user != null) {
-            // Navigate to appropriate dashboard based on role
-            switch (user.role) {
-              case 'Admin':
-                context.goNamed(RouteNames.adminDashboard);
-              case 'Guide':
-                context.goNamed(RouteNames.guideDashboard);
-              default:
-                context.goNamed(RouteNames.participantDashboard);
-            }
-          }
-        },
-      );
-    });
+    ref.listen<AsyncValue<void>>(
+      authControllerProvider,
+      (_, state) {
+        state.whenOrNull(
+          error: (error, _) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error.toString()),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          },
+        );
+      },
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo / Compass Icon
-                  const Icon(
-                    Icons.explore,
-                    size: 80,
-                    color: AppColors.primaryGold,
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.explore,
+                  size: 80,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'KOMPASS',
+                  style: AppTextStyles.h1.copyWith(
+                    color: AppColors.textPrimary,
+                    letterSpacing: 4,
                   ),
-                  const SizedBox(height: 16),
-                  Text('KOMPASS', style: AppTextStyles.displayLarge),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Navigate Together, Explore Forever',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textHint,
-                      fontStyle: FontStyle.italic,
-                    ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Navigate Together, Explore Forever',
+                  style: AppTextStyles.bodyText.copyWith(
+                    color: AppColors.textSecondary,
                   ),
-                  const SizedBox(height: 48),
-
-                  // Email Field
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    validator: Validators.email,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Password Field
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
-                    validator: Validators.password,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(Icons.lock_outlined),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() => _obscurePassword = !_obscurePassword);
-                        },
+                ),
+                const SizedBox(height: 48),
+                KompassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextFormField(
+                            controller: _emailController,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email_outlined),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            validator: Validators.validateEmail,
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _passwordController,
+                            decoration: const InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: Icon(Icons.lock_outline),
+                            ),
+                            obscureText: true,
+                            validator: Validators.validatePassword,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => _submit(),
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: isLoading
+                                  ? null
+                                  : () => context.pushNamed(RouteNames.forgotPassword),
+                              child: Text(
+                                'Forgot Password?',
+                                style: TextStyle(color: AppColors.primary),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          KompassButton(
+                            text: 'LOG IN',
+                            onPressed: _submit,
+                            isLoading: isLoading,
+                          ),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: isLoading
+                                ? null
+                                : () => context.pushNamed(RouteNames.register),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.textPrimary,
+                              side: BorderSide(color: AppColors.primary),
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            child: const Text('CREATE NEW ACCOUNT'),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-
-                  // Forgot Password
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () => context.pushNamed(RouteNames.forgotPassword),
-                      child: const Text('Forgot Password?'),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Login Button
-                  KompassButton(
-                    label: 'Set Sail',
-                    icon: Icons.login,
-                    isLoading: authState.isLoading,
-                    onPressed: _handleLogin,
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Register Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'New explorer? ',
-                        style: AppTextStyles.bodyMedium,
-                      ),
-                      TextButton(
-                        onPressed: () => context.pushNamed(RouteNames.register),
-                        child: const Text('Join the Crew'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

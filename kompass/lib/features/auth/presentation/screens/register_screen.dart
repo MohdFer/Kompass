@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/enums/user_role.dart';
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/utils/validators.dart';
-import '../../../../core/widgets/kompass_button.dart';
-import '../../providers/auth_providers.dart';
+
+import '../../../core/enums/user_role.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/widgets/kompass_button.dart';
+import '../../../core/widgets/kompass_card.dart';
+import '../providers/auth_providers.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -20,147 +22,157 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  UserRole _selectedRole = UserRole.participant;
-  bool _obscurePassword = true;
+  UserRole _selectedRole = UserRole.Participant;
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _handleRegister() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    await ref.read(authNotifierProvider.notifier).register(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      password: _passwordController.text,
-      role: _selectedRole.label,
-    );
+  void _submit() {
+    if (_formKey.currentState!.validate()) {
+      ref.read(authControllerProvider.notifier).register(
+            _nameController.text.trim(),
+            _emailController.text.trim(),
+            _passwordController.text.trim(),
+            _selectedRole,
+          );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authNotifierProvider);
+    final authState = ref.watch(authControllerProvider);
+    final isLoading = authState.isLoading;
+
+    ref.listen<AsyncValue<void>>(
+      authControllerProvider,
+      (_, state) {
+        state.whenOrNull(
+          error: (error, _) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error.toString()),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          },
+        );
+      },
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Join the Crew')),
+      appBar: AppBar(
+        title: const Text('Enlist'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: IconThemeData(color: AppColors.textPrimary),
+      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32),
-          child: Form(
-            key: _formKey,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Create Your Account', style: AppTextStyles.headlineLarge),
-                const SizedBox(height: 8),
-                Text(
-                  'Begin your adventure with KOMPASS',
-                  style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textHint),
+                Icon(
+                  Icons.person_add_alt_1,
+                  size: 64,
+                  color: AppColors.primary,
                 ),
-                const SizedBox(height: 32),
-
-                // Name
-                TextFormField(
-                  controller: _nameController,
-                  validator: (v) => Validators.required(v, 'Name'),
-                  decoration: const InputDecoration(
-                    labelText: 'Full Name',
-                    prefixIcon: Icon(Icons.person_outlined),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Email
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: Validators.email,
-                  decoration: const InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Role Selection
-                DropdownButtonFormField<UserRole>(
-                  value: _selectedRole,
-                  decoration: const InputDecoration(
-                    labelText: 'Role',
-                    prefixIcon: Icon(Icons.badge_outlined),
-                  ),
-                  items: UserRole.values.map((role) {
-                    return DropdownMenuItem(
-                      value: role,
-                      child: Text(role.label),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) setState(() => _selectedRole = value);
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Password
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  validator: Validators.password,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outlined),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                const SizedBox(height: 24),
+                KompassCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Join the Expedition',
+                            style: AppTextStyles.h2,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 24),
+                          TextFormField(
+                            controller: _nameController,
+                            decoration: const InputDecoration(
+                              labelText: 'Full Name',
+                              prefixIcon: Icon(Icons.person_outline),
+                            ),
+                            validator: Validators.validateName,
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _emailController,
+                            decoration: const InputDecoration(
+                              labelText: 'Email',
+                              prefixIcon: Icon(Icons.email_outlined),
+                            ),
+                            keyboardType: TextInputType.emailAddress,
+                            validator: Validators.validateEmail,
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 20),
+                          TextFormField(
+                            controller: _passwordController,
+                            decoration: const InputDecoration(
+                              labelText: 'Password',
+                              prefixIcon: Icon(Icons.lock_outline),
+                            ),
+                            obscureText: true,
+                            validator: Validators.validatePassword,
+                            textInputAction: TextInputAction.done,
+                          ),
+                          const SizedBox(height: 20),
+                          DropdownButtonFormField<UserRole>(
+                            value: _selectedRole,
+                            decoration: const InputDecoration(
+                              labelText: 'Role',
+                              prefixIcon: Icon(Icons.badge_outlined),
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: UserRole.Participant,
+                                child: Text('Participant'),
+                              ),
+                              DropdownMenuItem(
+                                value: UserRole.Guide,
+                                child: Text('Tour Guide'),
+                              ),
+                            ],
+                            onChanged: (role) {
+                              if (role != null) {
+                                setState(() {
+                                  _selectedRole = role;
+                                });
+                              }
+                            },
+                          ),
+                          const SizedBox(height: 32),
+                          KompassButton(
+                            text: 'ENLIST NOW',
+                            onPressed: _submit,
+                            isLoading: isLoading,
+                          ),
+                          const SizedBox(height: 16),
+                          TextButton(
+                            onPressed: isLoading ? null : () => context.pop(),
+                            child: Text(
+                              'Already have an account? Log In',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          ),
+                        ],
                       ),
-                      onPressed: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
-                      },
                     ),
                   ),
-                ),
-                const SizedBox(height: 16),
-
-                // Confirm Password
-                TextFormField(
-                  controller: _confirmPasswordController,
-                  obscureText: true,
-                  validator: (v) =>
-                      Validators.confirmPassword(v, _passwordController.text),
-                  decoration: const InputDecoration(
-                    labelText: 'Confirm Password',
-                    prefixIcon: Icon(Icons.lock_outlined),
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Register Button
-                KompassButton(
-                  label: 'Embark',
-                  icon: Icons.sailing,
-                  isLoading: authState.isLoading,
-                  onPressed: _handleRegister,
-                ),
-                const SizedBox(height: 16),
-
-                // Already have account
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Already a crew member? ', style: AppTextStyles.bodyMedium),
-                    TextButton(
-                      onPressed: () => context.pop(),
-                      child: const Text('Sign In'),
-                    ),
-                  ],
                 ),
               ],
             ),

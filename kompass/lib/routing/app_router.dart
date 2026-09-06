@@ -23,7 +23,8 @@ import '../features/emergency/presentation/screens/sos_screen.dart';
 import 'route_names.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authStateProvider);
+  final authState = ref.watch(authStateChangesProvider);
+  final currentUserState = ref.watch(currentUserProvider);
 
   return GoRouter(
     initialLocation: '/login',
@@ -37,11 +38,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       // Redirect to login if not authenticated
       if (!isLoggedIn && !isAuthRoute) return '/login';
 
-      // Redirect away from auth pages if already logged in
-      if (isLoggedIn && isAuthRoute) {
-        // Route to appropriate dashboard based on role
-        // This will be enhanced once the user profile is loaded
-        return '/guide-dashboard';
+      // If logged in but user data is still loading, wait on a splash or let it resolve
+      if (isLoggedIn && currentUserState.isLoading) {
+        // Just return null to stay on current route while loading
+        return null;
+      }
+
+      // Redirect away from auth pages if already logged in and user data is available
+      if (isLoggedIn && isAuthRoute && currentUserState.valueOrNull != null) {
+        final role = currentUserState.valueOrNull!.role.name;
+        if (role == 'Admin') return '/admin-dashboard';
+        if (role == 'Guide') return '/guide-dashboard';
+        return '/participant-dashboard';
       }
 
       return null;
