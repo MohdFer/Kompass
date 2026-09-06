@@ -1,0 +1,988 @@
+# KOMPASS
+
+## Intelligent Tour Coordination and Management Mobile Application
+
+### Final-Year Project — Phase 1 & Phase 2
+
+---
+
+## 1. Project Title
+
+**KOMPASS: Intelligent Tour Coordination and Management Mobile Application**
+
+**Phase 1:** Core Tour Management and Coordination System
+**Phase 2:** Advanced Geofencing and Offline Mesh Communication
+
+---
+
+## 2. Domain
+
+**Mobile Computing | Location-Based Services (LBS) | Real-Time Communication | Cloud Computing**
+
+**Advanced Phase 2:** Geospatial Computing | Wireless Mesh Networking | Distributed Communication
+
+---
+
+## 3. Team Members
+
+| Roll No. | Name                |
+| -------- | ------------------- |
+| 502319   | Aswin               |
+| 502326   | Jefrin              |
+| 502337   | Mohamed Feroz       |
+| 502361   | Barnabas Mathew Vaz |
+
+---
+
+# 4. Abstract
+
+**KOMPASS** is a mobile application designed to simplify the planning, coordination, communication, attendance management, and safety monitoring of organized tour groups. Existing tour management methods often rely on multiple applications for communication, navigation, attendance, and location sharing, resulting in fragmented workflows, communication delays, and inefficient coordination. KOMPASS addresses these challenges by integrating essential tour management functionalities into a single mobile platform.
+
+The system enables tour organizers and guides to create and manage tours, register participants, maintain itineraries, monitor digital attendance, communicate with participants, broadcast announcements, and share participant locations with appropriate consent. The application also provides map-based location visualization, emergency SOS support, meeting-point management, push notifications, and real-time communication.
+
+The project is developed in two phases. **Phase 1**, implemented as the mini project, focuses on establishing the core tour management platform, including role-based access, tour and participant management, itinerary management, digital attendance, location sharing, messaging, announcements, notifications, and basic emergency support.
+
+**Phase 2** extends the system into a full-fledged and production-oriented platform by introducing a custom hybrid geofencing engine and **BitChat-inspired offline Bluetooth mesh communication**. The geofencing system will support circular and polygonal boundaries using Haversine and Ray Casting algorithms, while the offline communication layer will enable nearby smartphones to exchange and relay messages without depending entirely on internet connectivity.
+
+By combining tour management, real-time communication, location services, geospatial intelligence, safety features, and offline connectivity, KOMPASS aims to provide a smarter, safer, and more organized experience for tour organizers and participants.
+
+---
+
+# 5. Problem Statement
+
+Managing organized tours using multiple applications and manual processes often results in:
+
+* Inefficient communication between guides and participants
+* Inaccurate or time-consuming attendance tracking
+* Difficulty monitoring participant locations
+* Difficulty identifying missing participants
+* Delayed emergency response
+* Fragmented tour information
+* Increased workload for tour organizers
+* Dependence on multiple unrelated applications
+
+Existing solutions generally provide individual services such as messaging, navigation, calling, or location sharing rather than a unified platform specifically designed for tour-group coordination.
+
+Therefore, a centralized mobile application is required to integrate **tour management, attendance, communication, location services, notifications, and safety features** into a single system, with advanced geofencing and offline communication introduced in the second phase.
+
+---
+
+# 6. Aim
+
+To develop a **mobile-based intelligent tour coordination and management system** that enables organizers and guides to efficiently manage participants, communicate with the group, manage tour information, and improve participant safety through location-aware and communication services.
+
+---
+
+# 7. Objectives
+
+1. Develop a centralized platform for tour coordination and management.
+2. Implement role-based access for administrators, guides, and participants.
+3. Digitally manage tour participants and attendance.
+4. Provide itinerary and meeting-point management.
+5. Enable consent-based participant location sharing.
+6. Provide map-based visualization of participant locations.
+7. Implement real-time messaging and announcements.
+8. Provide push notifications for important tour events.
+9. Implement in-app voice communication using WebRTC.
+10. Provide emergency SOS support.
+11. Develop a custom hybrid geofencing engine in Phase 2.
+12. Implement offline Bluetooth mesh communication in Phase 2.
+13. Reduce manual coordination efforts for tour organizers.
+14. Improve safety and communication during organized tours.
+15. Extend the system toward a scalable, production-ready application.
+
+---
+
+# 8. Target Users
+
+### Administrator
+
+* Create and manage tours
+* Manage guides
+* Manage participants
+* Monitor tours
+* View reports
+
+### Tour Guide / Coordinator
+
+* Manage assigned tours
+* Monitor attendance
+* View participant locations
+* Send announcements
+* Communicate with participants
+* Manage meeting points
+* Respond to emergencies
+
+### Participant
+
+* Join tours
+* View itinerary
+* View meeting points
+* Mark attendance
+* Share location with consent
+* Receive announcements
+* Message and call guides
+* Receive alerts
+* Trigger SOS
+
+---
+
+# 9. Proposed System
+
+KOMPASS provides a centralized mobile platform where the complete tour workflow can be managed.
+
+### Tour Management
+
+* Tour creation
+* Tour scheduling
+* Participant registration
+* Guide assignment
+* Itinerary management
+* Checkpoints
+* Meeting points
+
+### Attendance
+
+* QR-code attendance
+* Manual attendance
+* Attendance records
+* Attendance history
+* Attendance reports
+
+### Communication
+
+* One-to-one messaging
+* Group messaging
+* Broadcast announcements
+* Push notifications
+* One-to-one voice calling — Phase 2
+* Group voice communication — Phase 2
+
+### Location
+
+* GPS-based location sharing
+* Live participant locations
+* Guide-side map
+* Meeting-point visualization
+* Location information
+
+### Safety
+
+* Emergency SOS
+* Emergency notifications
+* Participant location sharing
+* Advanced geofencing — Phase 2
+* Boundary exit alerts — Phase 2
+
+### Media and Documents
+
+* Photo sharing
+* File sharing
+* Travel documents
+* Tickets and related information
+
+---
+
+# 10. Phase 1 — Mini Project
+
+## Core Tour Management and Coordination
+
+Phase 1 focuses on building and demonstrating the **core KOMPASS platform**.
+
+The primary objective is to establish a functional end-to-end workflow for managing an organized tour.
+
+### Phase 1 Features
+
+#### Authentication
+
+* User registration
+* Login
+* Logout
+* User profiles
+
+#### Role-Based Access
+
+* Administrator
+* Tour Guide
+* Participant
+
+#### Tour Management
+
+* Create tours
+* Edit tours
+* Manage participants
+* Assign guides
+* Manage tour status
+
+#### Itinerary Management
+
+* Destinations
+* Activities
+* Dates and times
+* Meeting points
+* Descriptions
+
+#### Attendance
+
+* QR-code attendance
+* Manual attendance
+* Attendance timestamps
+* Attendance records
+
+#### Communication
+
+* Basic in-app messaging
+* Announcements
+* Push notifications
+
+#### Location
+
+* GPS location sharing
+* Consent-based location sharing
+* Map visualization
+* Participant location display
+
+#### Emergency
+
+* Basic SOS functionality
+* Emergency notification to the guide
+
+#### Backend
+
+* Firebase Authentication
+* Cloud Firestore
+* Firebase Storage
+* Firebase Cloud Messaging
+
+### Phase 1 Outcome
+
+A functional **smart tour management and coordination prototype** capable of handling the major day-to-day requirements of an organized tour.
+
+---
+
+# 11. Phase 2 — Full-Fledged System
+
+Phase 2 extends the Phase 1 system with advanced communication, geospatial intelligence, safety, and offline capabilities.
+
+The two major technical additions are:
+
+### 1. Custom Hybrid Geofencing
+
+### 2. BitChat-Inspired Offline Mesh Communication
+
+Additional improvements will include advanced WebRTC communication, offline synchronization, security, performance optimization, and production deployment.
+
+---
+
+# 12. Phase 2 — Hybrid Geofencing
+
+KOMPASS will implement a custom geofencing engine capable of handling different geographical boundary types.
+
+## Circular Geofencing
+
+The **Haversine distance algorithm** will be used to calculate the distance between the participant and the center of a circular region.
+
+Suitable for:
+
+* Hotels
+* Restaurants
+* Bus stops
+* Meeting points
+
+## Polygon Geofencing
+
+The **Ray Casting point-in-polygon algorithm** will be used to determine whether a participant is inside an irregular geographical boundary.
+
+Suitable for:
+
+* Parks
+* Museums
+* Campuses
+* Beaches
+* Tourist attractions
+
+---
+
+# 13. Geofencing Workflow
+
+```text
+GPS Location
+     ↓
+Identify Geofence Type
+     ↓
+ ┌───────────────┬────────────────┐
+ │               │                │
+Circular        Polygon
+ │               │
+Haversine       Ray Casting
+ │               │
+ └───────┬───────┘
+         ↓
+ Boundary State
+         ↓
+ Consecutive Validation
+         ↓
+ Exit Confirmed
+         ↓
+ Guide Notification
+```
+
+---
+
+# 14. Geofencing Optimization
+
+### Bounding Box Filtering
+
+A preliminary bounding-box check can reduce unnecessary polygon calculations.
+
+### Consecutive Exit Validation
+
+Multiple location readings can be used before confirming that a participant has actually left the designated area.
+
+```text
+Outside
+   ↓
+Outside
+   ↓
+Outside
+   ↓
+Exit Confirmed
+   ↓
+Alert
+```
+
+This helps reduce false alerts caused by GPS fluctuations.
+
+### Adaptive GPS Polling
+
+The system can dynamically adjust location-update frequency based on movement and proximity to monitored areas, helping reduce unnecessary battery consumption.
+
+---
+
+# 15. Phase 2 — Offline Mesh Communication
+
+KOMPASS will introduce **BitChat-inspired offline communication** using the Bluetooth capabilities already available in smartphones.
+
+No external Bluetooth hardware modules are required.
+
+The objective is to allow tour participants to communicate even when normal internet connectivity is unavailable or unreliable.
+
+### Example
+
+```text
+Participant A
+      │
+   Bluetooth
+      ↓
+Participant B
+      │
+   Bluetooth
+      ↓
+Participant C
+      │
+   Bluetooth
+      ↓
+    Guide
+```
+
+A message can potentially be relayed through nearby participant devices until it reaches the intended recipient.
+
+### Planned Features
+
+* Nearby device discovery
+* Tour-specific communication groups
+* Peer-to-peer messaging
+* Multi-hop message relay
+* Store-and-forward messaging
+* Offline message queue
+* Message acknowledgement
+* Duplicate-message prevention
+* Offline-to-online synchronization
+* Secure communication
+* Battery optimization
+
+The implementation will be **inspired by the communication approach of BitChat**, while being designed specifically for the controlled requirements of organized tour groups.
+
+---
+
+# 16. Phase 2 — Advanced Communication
+
+The communication system will be extended with:
+
+### Messaging
+
+* One-to-one chat
+* Group chat
+* Broadcast announcements
+* Message history
+* Real-time synchronization
+
+### Voice Communication
+
+WebRTC will be used for in-app voice communication.
+
+The system will support:
+
+* One-to-one voice calling
+* Group voice communication
+* Call notifications
+* Mute/unmute
+* Call status
+
+The exact architecture for scalable group voice communication will be finalized during implementation based on testing and system requirements.
+
+---
+
+# 17. WebRTC Architecture
+
+```text
+Mobile App
+     │
+     ▼
+WebRTC Signaling
+     │
+     ▼
+STUN / TURN Server
+     │
+     ▼
+Voice Communication
+```
+
+Firestore will be used as the signaling mechanism for exchanging WebRTC connection information.
+
+STUN/TURN infrastructure assists in establishing connectivity across different network environments.
+
+---
+
+# 18. Cloud Architecture
+
+Firebase provides the cloud infrastructure for KOMPASS.
+
+### Firebase Authentication
+
+Responsible for:
+
+* User identity
+* Login
+* Authentication
+
+### Cloud Firestore
+
+Stores:
+
+* Users
+* Tours
+* Participants
+* Attendance
+* Messages
+* Locations
+* Geofences
+* Announcements
+
+### Firebase Storage
+
+Stores:
+
+* Images
+* Documents
+* Tickets
+* Tour-related media
+
+### Firebase Cloud Messaging
+
+Handles:
+
+* Announcements
+* Emergency notifications
+* Attendance notifications
+* Geofence alerts
+* Call notifications
+
+---
+
+# 19. System Architecture
+
+```text
+                    KOMPASS Mobile App
+                            │
+          ┌─────────────────┼─────────────────┐
+          │                 │                 │
+   Firebase Auth     Cloud Firestore   Firebase Storage
+          │                 │                 │
+          └─────────────────┼─────────────────┘
+                            │
+                Firebase Cloud Messaging
+                            │
+                   Alerts & Notifications
+
+
+       ┌──────────────┐     ┌─────────────────┐
+       │  Mobile App  │────►│ WebRTC Signaling│
+       └──────────────┘     └────────┬────────┘
+                                     │
+                                     ▼
+                              STUN / TURN
+                                Server
+                                     │
+                                     ▼
+                           Voice Communication
+
+
+       ┌──────────────┐
+       │ GPS Location │
+       └───────┬──────┘
+               │
+               ▼
+       ┌────────────────┐
+       │ OpenStreetMap  │
+       └───────┬────────┘
+               │
+               ▼
+       ┌─────────────────────────┐
+       │ Hybrid Geofencing Engine│
+       │       [Phase 2]         │
+       └───────────┬─────────────┘
+                   ▼
+          Haversine + Ray Casting
+                   │
+                   ▼
+          Boundary Exit Detection
+                   │
+                   ▼
+            Guide Notification
+
+
+       ┌──────────────────────────────┐
+       │ Offline Bluetooth Mesh       │
+       │           [Phase 2]          │
+       └──────────────────────────────┘
+```
+
+**Note:** The current architecture is a proposed high-level architecture. Detailed scalable group-communication architecture will be finalized during implementation.
+
+---
+
+# 20. Technology Stack
+
+| Component             | Technology                          |
+| --------------------- | ----------------------------------- |
+| Frontend              | Flutter                             |
+| Programming Language  | Dart                                |
+| Backend               | Firebase                            |
+| Database              | Cloud Firestore                     |
+| Authentication        | Firebase Authentication             |
+| Notifications         | Firebase Cloud Messaging            |
+| Storage               | Firebase Storage                    |
+| Voice Communication   | WebRTC                              |
+| Signaling             | Cloud Firestore                     |
+| NAT Traversal         | STUN / TURN                         |
+| Maps                  | OpenStreetMap                       |
+| Map Library           | flutter_map                         |
+| Location              | Geolocator                          |
+| Geofencing            | Custom Hybrid Engine — Phase 2      |
+| Offline Communication | Smartphone Bluetooth Mesh — Phase 2 |
+| Local Storage         | Hive                                |
+| State Management      | Riverpod                            |
+| Version Control       | Git & GitHub                        |
+
+---
+
+# 21. Main Modules
+
+### Phase 1
+
+1. Authentication Module
+2. User Management Module
+3. Tour Management Module
+4. Itinerary Module
+5. Attendance Module
+6. Communication Module
+7. Location Tracking Module
+8. Notification Module
+9. Emergency Module
+10. Basic Reports Module
+
+### Phase 2
+
+11. Hybrid Geofencing Module
+12. Advanced Communication Module
+13. WebRTC Voice Module
+14. Offline Mesh Communication Module
+15. Offline Synchronization Module
+16. Advanced Safety Module
+17. Advanced Reports and Analytics
+
+---
+
+# 22. Database Structure
+
+### Users
+
+```text
+userId
+name
+email
+role
+profileImage
+createdAt
+```
+
+### Tours
+
+```text
+tourId
+name
+description
+startDate
+endDate
+guideId
+status
+createdAt
+```
+
+### Participants
+
+```text
+tourId
+userId
+role
+status
+joinedAt
+```
+
+### Attendance
+
+```text
+attendanceId
+tourId
+userId
+timestamp
+location
+method
+status
+```
+
+### Messages
+
+```text
+messageId
+tourId
+senderId
+message
+timestamp
+```
+
+### Locations
+
+```text
+locationId
+tourId
+userId
+latitude
+longitude
+timestamp
+```
+
+### Announcements
+
+```text
+announcementId
+tourId
+title
+message
+createdBy
+timestamp
+```
+
+### Geofences — Phase 2
+
+```text
+geofenceId
+tourId
+type
+center
+radius
+polygon
+status
+```
+
+---
+
+# 23. Security and Privacy
+
+KOMPASS will incorporate security and privacy controls for participant information and location data.
+
+### Security
+
+* Firebase Authentication
+* Role-based authorization
+* Firestore Security Rules
+* Tour-specific access control
+* Secure communication
+* Protected file storage
+
+### Location Privacy
+
+* Explicit location permission
+* Consent-based sharing
+* Authorized guide access
+* Tour-specific visibility
+* Controlled location access
+
+The system should provide clear indication of when participant location sharing is active.
+
+---
+
+# 24. Phase Comparison
+
+| Feature                 |     Phase 1     |  Phase 2  |
+| ----------------------- | :-------------: | :-------: |
+| Authentication          |        ✓        |  Enhanced |
+| Role Management         |        ✓        |     ✓     |
+| Tour Management         |        ✓        |  Enhanced |
+| Participant Management  |        ✓        |     ✓     |
+| QR Attendance           |        ✓        |  Enhanced |
+| Manual Attendance       |        ✓        |     ✓     |
+| Itinerary               |        ✓        |  Enhanced |
+| Announcements           |        ✓        | Real-time |
+| Basic Messaging         |        ✓        |  Advanced |
+| OpenStreetMap           |        ✓        |  Enhanced |
+| GPS Location Sharing    |        ✓        |  Advanced |
+| Participant Map         |        ✓        |     ✓     |
+| WebRTC Voice            | Basic / Planned |     ✓     |
+| Group Voice             |        —        |     ✓     |
+| Circular Geofencing     |        —        |     ✓     |
+| Polygon Geofencing      |        —        |     ✓     |
+| Haversine               |        —        |     ✓     |
+| Ray Casting             |        —        |     ✓     |
+| Geofence Alerts         |        —        |     ✓     |
+| SOS                     |      Basic      |  Advanced |
+| Advanced Attendance     |        —        |     ✓     |
+| Offline Bluetooth Mesh  |        —        |     ✓     |
+| Multi-hop Messaging     |        —        |     ✓     |
+| Store-and-Forward       |        —        |     ✓     |
+| Offline Synchronization |        —        |     ✓     |
+| Production Deployment   |        —        |     ✓     |
+
+---
+
+# 25. Development Strategy
+
+## Phase 1
+
+1. Requirements analysis
+2. UI/UX design
+3. Firebase setup
+4. Authentication
+5. Role-based access
+6. Tour management
+7. Participant management
+8. Itinerary management
+9. Attendance
+10. Messaging and announcements
+11. Push notifications
+12. OpenStreetMap integration
+13. GPS location sharing
+14. Basic SOS
+15. Testing
+16. Documentation
+
+### Phase 1 Deliverable
+
+**Functional KOMPASS Mini Project**
+
+---
+
+## Phase 2
+
+1. Enhance existing architecture
+2. Implement advanced messaging
+3. Implement WebRTC voice communication
+4. Implement hybrid geofencing
+5. Implement Haversine algorithm
+6. Implement Ray Casting algorithm
+7. Implement geofence optimization
+8. Implement boundary alerts
+9. Implement advanced SOS and safety
+10. Implement offline Bluetooth mesh
+11. Implement multi-hop communication
+12. Implement store-and-forward messaging
+13. Implement offline synchronization
+14. Improve security and privacy
+15. Optimize battery usage
+16. Conduct performance testing
+17. Conduct field testing
+18. Deploy production system
+
+### Phase 2 Deliverable
+
+**Full-fledged and production-oriented KOMPASS system**
+
+---
+
+# 26. Expected Outcomes
+
+## Phase 1
+
+* Centralized tour-management platform
+* Digital participant management
+* Digital attendance
+* Itinerary management
+* Announcements
+* Push notifications
+* Basic messaging
+* GPS location sharing
+* Map visualization
+* Basic emergency support
+
+## Phase 2
+
+* Real-time communication
+* WebRTC voice calling
+* Hybrid geofencing
+* Automated boundary alerts
+* Advanced participant safety
+* Offline Bluetooth mesh communication
+* Multi-hop message delivery
+* Offline synchronization
+* Improved reliability
+* Security and performance optimization
+* Production-ready deployment
+
+---
+
+# 27. Target Applications
+
+KOMPASS can be adapted for:
+
+* Educational tours
+* College excursions
+* Corporate trips
+* Travel-agency tours
+* Recreational group tours
+* Pilgrimage groups
+* Adventure and trekking groups
+* Large organized tourist groups
+
+---
+
+# 28. Technical Challenges
+
+### GPS Accuracy
+
+GPS readings may fluctuate because of environmental conditions and signal obstruction.
+
+**Approach:** Accuracy filtering and location validation.
+
+### Battery Consumption
+
+Continuous GPS tracking can consume significant battery.
+
+**Approach:** Adaptive location-update strategies.
+
+### Real-Time Synchronization
+
+Participant information needs to remain synchronized across devices.
+
+**Approach:** Firebase real-time data synchronization.
+
+### WebRTC Connectivity
+
+Direct peer communication may not always be possible.
+
+**Approach:** STUN/TURN-assisted connectivity.
+
+### Geofence False Alerts
+
+GPS drift can result in incorrect boundary detection.
+
+**Approach:** Consecutive validation and accuracy filtering.
+
+### Offline Mesh Communication
+
+Bluetooth communication introduces challenges involving:
+
+* Device discovery
+* Limited communication range
+* Peer availability
+* Multi-hop routing
+* Duplicate messages
+* Device disconnections
+* Message synchronization
+
+**Approach:** Message identifiers, relay mechanisms, queues, acknowledgements and synchronization.
+
+---
+
+# 29. Innovation
+
+KOMPASS focuses on **integrating multiple technologies around the specific requirements of organized tour groups** rather than providing another general-purpose messaging or navigation application.
+
+### Phase 1
+
+The innovation lies in combining:
+
+**Tour Management + Attendance + Communication + Location + Safety**
+
+into a single platform.
+
+### Phase 2
+
+The system extends this with:
+
+**Hybrid Geofencing + Offline Bluetooth Mesh Communication**
+
+allowing the platform to provide more intelligent location-based safety and communication capabilities even under limited connectivity.
+
+---
+
+# 30. Limitations
+
+* GPS accuracy varies depending on the environment.
+* Continuous location tracking can affect battery life.
+* Real-time services depend on network availability.
+* WebRTC performance depends on network conditions.
+* Map data availability may vary by region.
+* Bluetooth mesh communication is affected by device density and physical distance.
+* Large-scale deployments may require additional backend optimization.
+
+---
+
+# 31. Future Enhancements
+
+Possible future extensions include:
+
+*Items now planned for Phase 3 (see `initial_plan_2.md`):*
+
+* AI-based itinerary assistance → Phase 3: Multilingual AI Assistant
+* AI-based route optimization → Phase 3: Dynamic ETA & Predictive Routing
+* Multilingual support → Phase 3: Multilingual AI Assistant & Translation
+* Intelligent participant-risk analysis → Phase 3: Health & Weather Risk Alerts
+
+*Remaining future enhancements (beyond Phase 3):*
+
+* Offline map caching
+* Video calling
+* Expense management
+* Advanced analytics
+* Wearable-device integration
+* Smartwatch support
+* Advanced organizer dashboard
+* Automated tour reports
+
+---
+
+# 32. Conclusion
+
+**KOMPASS** provides a unified approach to organized tour management by integrating tour planning, participant management, attendance, communication, location sharing, notifications, and emergency assistance into a single mobile platform.
+
+**Phase 1** establishes the core tour management and coordination system, providing a functional foundation that can be demonstrated as the mini project.
+
+**Phase 2** builds upon this foundation by introducing the project's more advanced technical components: **custom hybrid geofencing and BitChat-inspired offline Bluetooth mesh communication**, along with enhanced real-time communication, safety mechanisms, synchronization, optimization, and production deployment.
+
+**Phase 3** (see `initial_plan_2.md`) extends the production system with **AI-driven predictive models and smart assistance**, including crowd density prediction, dynamic ETA and routing, lost participant trajectory prediction, a multilingual AI assistant, and health and weather risk alerts — drawing inspiration from IEEE research on smart mobile solutions for large organized groups.
+
+This phased development approach allows KOMPASS to progress from a practical working prototype into a more sophisticated, scalable, and production-oriented tour coordination platform.
+
+> **KOMPASS — One platform to manage the tour, coordinate the group, and keep participants connected and safe.**
+
