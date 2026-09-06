@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_providers.dart';
+import '../core/enums/user_role.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
@@ -46,9 +47,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       // Redirect away from auth pages if already logged in and user data is available
       if (isLoggedIn && isAuthRoute && currentUserState.valueOrNull != null) {
-        final role = currentUserState.valueOrNull!.role.name;
-        if (role == 'Admin') return '/admin-dashboard';
-        if (role == 'Guide') return '/guide-dashboard';
+        final role = currentUserState.valueOrNull!.userRole;
+        if (role == UserRole.admin) return '/admin-dashboard';
+        if (role == UserRole.guide) return '/guide-dashboard';
         return '/participant-dashboard';
       }
 

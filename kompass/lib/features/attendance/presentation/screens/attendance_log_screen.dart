@@ -4,9 +4,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../providers/attendance_providers.dart';
-import '../../auth/providers/auth_providers.dart';
-import '../../auth/data/models/user_model.dart';
+import '../../providers/attendance_providers.dart';
+import '../../../auth/providers/auth_providers.dart';
 
 final userNameProvider = FutureProvider.family<String, String>((ref, userId) async {
   final user = await ref.read(authRepositoryProvider).getUserData(userId);

@@ -4,7 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../../auth/providers/auth_providers.dart';
+import '../../../auth/providers/auth_providers.dart';
 
 class QRGeneratorScreen extends ConsumerWidget {
   const QRGeneratorScreen({required this.tourId, super.key});
@@ -23,7 +23,7 @@ class QRGeneratorScreen extends ConsumerWidget {
           }
 
           // Generate QR data format: "userId|tourId"
-          final qrData = '${user.uid}|$tourId';
+          final qrData = '${user.userId}|$tourId';
 
           return Center(
             child: Column(

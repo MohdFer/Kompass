@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/validators.dart';
-import '../../../core/widgets/kompass_button.dart';
-import '../../../core/widgets/kompass_card.dart';
-import '../providers/auth_providers.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../core/widgets/kompass_button.dart';
+import '../../../../core/widgets/kompass_card.dart';
+import '../../providers/auth_providers.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -90,7 +90,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         Icon(
           Icons.lock_reset,
           size: 64,
-          color: AppColors.primary,
+          color: AppColors.primaryGold,
         ),
         const SizedBox(height: 24),
         KompassCard(
@@ -103,13 +103,13 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 children: [
                   Text(
                     'Lost your key?',
-                    style: AppTextStyles.h2,
+                    style: AppTextStyles.displayMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Enter your email address and we will send you instructions to reset your password.',
-                    style: AppTextStyles.bodyText,
+                    style: AppTextStyles.bodyMedium,
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -125,8 +125,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     onFieldSubmitted: (_) => _submit(),
                   ),
                   const SizedBox(height: 32),
-                  KompassButton(
-                    text: 'SEND RESET LINK',
+                  KompassButton(label: 'SEND RESET LINK',
                     onPressed: _submit,
                     isLoading: isLoading,
                   ),
@@ -146,23 +145,22 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         Icon(
           Icons.mark_email_read,
           size: 80,
-          color: AppColors.accent,
+          color: AppColors.accentRed,
         ),
         const SizedBox(height: 24),
         Text(
           'Email Sent!',
-          style: AppTextStyles.h2,
+          style: AppTextStyles.displayMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
         Text(
           'Check your inbox for a password reset link. It may take a few minutes to arrive.',
-          style: AppTextStyles.bodyText,
+          style: AppTextStyles.bodyMedium,
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
-        KompassButton(
-          text: 'BACK TO LOGIN',
+        KompassButton(label: 'BACK TO LOGIN',
           onPressed: () => context.pop(),
         ),
       ],

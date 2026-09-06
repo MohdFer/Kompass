@@ -6,7 +6,7 @@ import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_card.dart';
 import '../../../../core/widgets/kompass_loading.dart';
 import '../../../../core/widgets/kompass_empty_state.dart';
-import '../providers/tour_providers.dart';
+import '../../providers/tour_providers.dart';
 
 class TourListScreen extends ConsumerWidget {
   const TourListScreen({super.key});
@@ -28,8 +28,11 @@ class TourListScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final tour = tours[index];
               return KompassCard(
-                title: tour.name,
-                subtitle: tour.description,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tour.name),
+                  subtitle: Text(tour.description),
+                ),
                 onTap: () => context.push('/tours/${tour.tourId}'),
               );
             },

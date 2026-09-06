@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/enums/user_role.dart';
 import '../data/models/user_model.dart';
 import '../data/repositories/auth_repository.dart';
 
@@ -40,7 +39,7 @@ class AuthController extends _$AuthController {
     );
   }
 
-  Future<void> register(String name, String email, String password, UserRole role) async {
+  Future<void> register(String name, String email, String password, String role) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => 
       ref.read(authRepositoryProvider).registerWithEmailAndPassword(name, email, password, role)

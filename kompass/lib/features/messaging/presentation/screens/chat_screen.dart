@@ -107,7 +107,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                   const SizedBox(width: 8),
                   CircleAvatar(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: AppColors.primaryGold,
                     child: IconButton(
                       icon: const Icon(Icons.send, color: Colors.white),
                       onPressed: _sendMessage,
@@ -136,12 +136,12 @@ class _MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : AppColors.surface,
+          color: isMe ? AppColors.primaryGold : AppColors.surface,
           borderRadius: BorderRadius.circular(16).copyWith(
             bottomRight: isMe ? const Radius.circular(0) : null,
             bottomLeft: !isMe ? const Radius.circular(0) : null,
           ),
-          border: isMe ? null : Border.all(color: AppColors.border),
+          border: isMe ? null : Border.all(color: AppColors.sandDark),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,15 +150,15 @@ class _MessageBubble extends StatelessWidget {
             if (!isMe)
               Text(
                 message.senderName,
-                style: AppTextStyles.labelSmall.copyWith(
-                  color: AppColors.primary,
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.primaryGold,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             if (!isMe) const SizedBox(height: 4),
             Text(
               message.message,
-              style: AppTextStyles.bodyText.copyWith(
+              style: AppTextStyles.bodyMedium.copyWith(
                 color: isMe ? Colors.white : AppColors.textPrimary,
               ),
             ),

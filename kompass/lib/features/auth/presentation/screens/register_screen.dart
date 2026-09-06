@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/enums/user_role.dart';
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/validators.dart';
-import '../../../core/widgets/kompass_button.dart';
-import '../../../core/widgets/kompass_card.dart';
-import '../providers/auth_providers.dart';
+import '../../../../core/enums/user_role.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../core/widgets/kompass_button.dart';
+import '../../../../core/widgets/kompass_card.dart';
+import '../../providers/auth_providers.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -22,7 +22,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  UserRole _selectedRole = UserRole.Participant;
+  UserRole _selectedRole = UserRole.participant;
 
   @override
   void dispose() {
@@ -38,7 +38,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             _nameController.text.trim(),
             _emailController.text.trim(),
             _passwordController.text.trim(),
-            _selectedRole,
+            _selectedRole.label,
           );
     }
   }
@@ -82,7 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 Icon(
                   Icons.person_add_alt_1,
                   size: 64,
-                  color: AppColors.primary,
+                  color: AppColors.primaryGold,
                 ),
                 const SizedBox(height: 24),
                 KompassCard(
@@ -95,7 +95,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         children: [
                           Text(
                             'Join the Expedition',
-                            style: AppTextStyles.h2,
+                            style: AppTextStyles.displayMedium,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 24),
@@ -139,11 +139,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             ),
                             items: const [
                               DropdownMenuItem(
-                                value: UserRole.Participant,
+                                value: UserRole.participant,
                                 child: Text('Participant'),
                               ),
                               DropdownMenuItem(
-                                value: UserRole.Guide,
+                                value: UserRole.guide,
                                 child: Text('Tour Guide'),
                               ),
                             ],
@@ -156,8 +156,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             },
                           ),
                           const SizedBox(height: 32),
-                          KompassButton(
-                            text: 'ENLIST NOW',
+                          KompassButton(label: 'ENLIST NOW',
                             onPressed: _submit,
                             isLoading: isLoading,
                           ),

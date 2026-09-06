@@ -18,7 +18,7 @@ class SOSScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider).value;
-    final isGuide = user?.role == UserRole.guide || user?.role == UserRole.admin;
+    final isGuide = user?.userRole == UserRole.guide || user?.userRole == UserRole.admin;
 
     return Scaffold(
       appBar: const KompassAppBar(title: 'Distress Signals'),
@@ -50,7 +50,7 @@ class _GuideSOSView extends ConsumerWidget {
           itemBuilder: (context, index) {
             final alert = alerts[index];
             return Card(
-              color: AppColors.error.withOpacity(0.1),
+              color: AppColors.error.withValues(alpha: 0.1),
               margin: const EdgeInsets.only(bottom: 12),
               shape: RoundedRectangleBorder(
                 side: const BorderSide(color: AppColors.error),
@@ -58,7 +58,7 @@ class _GuideSOSView extends ConsumerWidget {
               ),
               child: ListTile(
                 leading: const Icon(Icons.warning, color: AppColors.error, size: 36),
-                title: Text('SOS: ${alert.userName}', style: AppTextStyles.h3.copyWith(color: AppColors.error)),
+                title: Text('SOS: ${alert.userName}', style: AppTextStyles.headlineLarge.copyWith(color: AppColors.error)),
                 subtitle: Text(
                   alert.timestamp != null 
                       ? DateFormat.yMMMd().add_jm().format(alert.timestamp!)
@@ -133,7 +133,7 @@ class _ParticipantSOSViewState extends ConsumerState<_ParticipantSOSView> {
           Text(
             'In case of emergency,\npress the button below.',
             textAlign: TextAlign.center,
-            style: AppTextStyles.h2,
+            style: AppTextStyles.displayMedium,
           ),
           const SizedBox(height: 48),
           GestureDetector(
@@ -146,7 +146,7 @@ class _ParticipantSOSViewState extends ConsumerState<_ParticipantSOSView> {
                 color: AppColors.error,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.error.withOpacity(0.5),
+                    color: AppColors.error.withValues(alpha: 0.5),
                     blurRadius: 30,
                     spreadRadius: 10,
                   ),

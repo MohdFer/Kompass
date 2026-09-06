@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/attendance_model.dart';
 import '../data/repositories/attendance_repository.dart';
-import '../../auth/providers/auth_providers.dart';
 
 final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
   return AttendanceRepository();

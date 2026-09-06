@@ -34,13 +34,11 @@ class GuideDashboardScreen extends ConsumerWidget {
           children: [
             Text('Welcome, $userName!', style: AppTextStyles.headlineLarge),
             const SizedBox(height: 32),
-            KompassButton(
-              text: 'Create New Tour',
+            KompassButton(label: 'Create New Tour',
               onPressed: () => context.goNamed(RouteNames.createTour),
             ),
             const SizedBox(height: 16),
-            KompassButton(
-              text: 'View Assigned Tours',
+            KompassButton(label: 'View Assigned Tours',
               onPressed: () => context.goNamed(RouteNames.tours),
             ),
           ],

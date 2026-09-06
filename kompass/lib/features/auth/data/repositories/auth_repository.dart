@@ -1,15 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../../../core/constants/firestore_constants.dart';
-import '../../../core/errors/app_exception.dart';
+import '../../../../core/constants/firestore_constants.dart';
+import '../../../../core/errors/app_exception.dart';
 import '../models/user_model.dart';
-import '../../../core/enums/user_role.dart';
 
 abstract class AuthRepository {
   Stream<User?> authStateChanges();
   User? get currentUser;
   Future<UserModel> signInWithEmailAndPassword(String email, String password);
-  Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, UserRole role);
+  Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, String role);
   Future<void> signOut();
   Future<void> sendPasswordResetEmail(String email);
   Future<UserModel?> getUserData(String uid);
@@ -37,18 +36,18 @@ class FirebaseAuthRepository implements AuthRepository {
       
       final userData = await getUserData(userCredential.user!.uid);
       if (userData == null) {
-        throw const AppException.notFound('User data not found in database.');
+        throw const DatabaseException('User data not found in database.');
       }
       return userData;
     } on FirebaseAuthException catch (e) {
-      throw AppException.auth(e.message ?? 'Authentication failed');
+      throw AuthException(e.message ?? 'Authentication failed');
     } catch (e) {
-      throw AppException.server('An unexpected error occurred during sign in.');
+      throw const DatabaseException('An unexpected error occurred during sign in.');
     }
   }
 
   @override
-  Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, UserRole role) async {
+  Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, String role) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -70,9 +69,9 @@ class FirebaseAuthRepository implements AuthRepository {
 
       return userModel;
     } on FirebaseAuthException catch (e) {
-      throw AppException.auth(e.message ?? 'Registration failed');
+      throw AuthException(e.message ?? 'Registration failed');
     } catch (e) {
-      throw AppException.server('An unexpected error occurred during registration.');
+      throw const DatabaseException('An unexpected error occurred during registration.');
     }
   }
 
@@ -86,7 +85,7 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
-      throw AppException.auth(e.message ?? 'Failed to send reset email');
+      throw AuthException(e.message ?? 'Failed to send reset email');
     }
   }
 
@@ -95,11 +94,11 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       final doc = await _firestore.collection(FirestoreConstants.usersCollection).doc(uid).get();
       if (doc.exists && doc.data() != null) {
-        return UserModel.fromFirestore(doc.data()!);
+        return UserModel.fromFirestore(doc);
       }
       return null;
     } catch (e) {
-      throw AppException.server('Failed to fetch user data');
+      throw const DatabaseException('Failed to fetch user data');
     }
   }
 }

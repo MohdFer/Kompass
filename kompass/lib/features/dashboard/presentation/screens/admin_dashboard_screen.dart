@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
@@ -36,31 +35,31 @@ class AdminDashboardScreen extends ConsumerWidget {
           children: [
             Text('Welcome, $userName!', style: AppTextStyles.headlineLarge),
             const SizedBox(height: 16),
-            const Row(
+            Row(
               children: [
                 Expanded(
                   child: KompassCard(
                     child: Padding(
-                      padding: EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         children: [
                           Text('Total Users', style: AppTextStyles.bodyMedium),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text('120', style: AppTextStyles.headlineMedium),
                         ],
                       ),
                     ),
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: KompassCard(
                     child: Padding(
-                      padding: EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Column(
                         children: [
                           Text('Active Tours', style: AppTextStyles.bodyMedium),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text('5', style: AppTextStyles.headlineMedium),
                         ],
                       ),
@@ -70,8 +69,7 @@ class AdminDashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 32),
-            KompassButton(
-              text: 'Manage Tours',
+            KompassButton(label: 'Manage Tours',
               onPressed: () => context.goNamed(RouteNames.tours),
             ),
           ],

@@ -5,8 +5,8 @@ import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_loading.dart';
 import '../../../../core/widgets/kompass_empty_state.dart';
-import '../providers/itinerary_providers.dart';
-import '../data/models/itinerary_model.dart';
+import '../../providers/itinerary_providers.dart';
+import '../../data/models/itinerary_model.dart';
 
 class ItineraryScreen extends ConsumerWidget {
   final String tourId;
@@ -50,10 +50,10 @@ class ItineraryScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(item.title, style: AppTextStyles.h3),
+            Text(item.title, style: AppTextStyles.headlineLarge),
             if (item.description.isNotEmpty) ...[
               const SizedBox(height: 8),
-              Text(item.description, style: AppTextStyles.bodyText),
+              Text(item.description, style: AppTextStyles.bodyMedium),
             ],
             const SizedBox(height: 16),
             Text('Date: ${item.date.toString().split(' ')[0]}', style: const TextStyle(fontWeight: FontWeight.bold)),

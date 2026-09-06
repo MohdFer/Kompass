@@ -72,7 +72,7 @@ class AnnouncementsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final announcementsAsync = ref.watch(tourAnnouncementsProvider(tourId));
     final currentUser = ref.watch(currentUserProvider).value;
-    final isGuide = currentUser?.role == UserRole.guide || currentUser?.role == UserRole.admin;
+    final isGuide = currentUser?.userRole == UserRole.guide || currentUser?.userRole == UserRole.admin;
 
     return Scaffold(
       appBar: const KompassAppBar(title: 'Captain\'s Orders'),
@@ -103,18 +103,18 @@ class AnnouncementsScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(announcement.title, style: AppTextStyles.h3),
+                      Text(announcement.title, style: AppTextStyles.headlineLarge),
                       const SizedBox(height: 8),
-                      Text(announcement.message, style: AppTextStyles.bodyText),
+                      Text(announcement.message, style: AppTextStyles.bodyMedium),
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text('By ${announcement.createdByName}', style: AppTextStyles.labelSmall),
+                          Text('By ${announcement.createdByName}', style: AppTextStyles.labelMedium),
                           if (announcement.timestamp != null)
                             Text(
                               DateFormat.yMMMd().add_jm().format(announcement.timestamp!),
-                              style: AppTextStyles.labelSmall.copyWith(color: AppColors.textSecondary),
+                              style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary),
                             ),
                         ],
                       ),

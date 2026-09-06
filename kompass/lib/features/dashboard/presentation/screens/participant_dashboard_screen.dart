@@ -32,15 +32,14 @@ class ParticipantDashboardScreen extends ConsumerWidget {
           children: [
             Text('Welcome, $userName!', style: AppTextStyles.headlineLarge),
             const SizedBox(height: 32),
-            const Center(
+            Center(
               child: Text(
                 'You are not currently in an active tour.',
                 style: AppTextStyles.bodyLarge,
               ),
             ),
             const SizedBox(height: 16),
-            KompassButton(
-              text: 'Join Tour',
+            KompassButton(label: 'Join Tour',
               onPressed: () {
                 // Placeholder
               },

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../providers/attendance_providers.dart';
+import '../../providers/attendance_providers.dart';
 
 class QRScannerScreen extends ConsumerStatefulWidget {
   const QRScannerScreen({required this.tourId, super.key});
@@ -102,7 +102,7 @@ class _QRScannerScreenState extends ConsumerState<QRScannerScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.surface.withOpacity(0.9),
+                  color: AppColors.surface.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: const Text(

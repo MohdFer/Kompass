@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
-import '../providers/document_providers.dart';
+import '../../providers/document_providers.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class DocumentListScreen extends ConsumerWidget {

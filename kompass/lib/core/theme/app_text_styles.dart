@@ -45,6 +45,13 @@ class AppTextStyles {
     color: AppColors.textPrimary,
   );
 
+  static TextStyle get titleMedium => TextStyle(
+    fontFamily: _headingFamily,
+    fontSize: 18,
+    fontWeight: FontWeight.w600,
+    color: AppColors.textPrimary,
+  );
+
   // ── Body (Source Sans 3 — clean, highly readable, great for seniors) ──
   static TextStyle get bodyLarge => TextStyle(
     fontFamily: _bodyFamily,

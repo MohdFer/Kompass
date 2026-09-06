@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_loading.dart';
-import '../providers/tour_providers.dart';
+import '../../providers/tour_providers.dart';
 
 class TourDetailScreen extends ConsumerWidget {
   final String tourId;
@@ -22,9 +22,9 @@ class TourDetailScreen extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Text(tour.name, style: AppTextStyles.h2),
+              Text(tour.name, style: AppTextStyles.displayMedium),
               const SizedBox(height: 8),
-              Text(tour.description, style: AppTextStyles.bodyText),
+              Text(tour.description, style: AppTextStyles.bodyMedium),
               const SizedBox(height: 16),
               if (tour.startDate != null && tour.endDate != null)
                 Text('From: ${tour.startDate.toString().split(' ')[0]} To: ${tour.endDate.toString().split(' ')[0]}'),

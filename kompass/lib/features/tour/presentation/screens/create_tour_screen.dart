@@ -2,12 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_button.dart';
-import '../data/models/tour_model.dart';
-import '../providers/tour_providers.dart';
+import '../../data/models/tour_model.dart';
+import '../../providers/tour_providers.dart';
 import '../../../auth/providers/auth_providers.dart';
 
 class CreateTourScreen extends ConsumerStatefulWidget {
@@ -102,8 +100,7 @@ class _CreateTourScreenState extends ConsumerState<CreateTourScreen> {
                 },
               ),
               const SizedBox(height: 32),
-              KompassButton(
-                text: 'Create Tour',
+              KompassButton(label: 'Create Tour',
                 onPressed: _submit,
               ),
             ],

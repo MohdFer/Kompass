@@ -7,12 +7,14 @@ class KompassEmptyState extends StatelessWidget {
   const KompassEmptyState({
     required this.message,
     super.key,
+    this.title,
     this.icon = Icons.explore_off,
     this.actionLabel,
     this.onAction,
   });
 
   final String message;
+  final String? title;
   final IconData icon;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -27,6 +29,14 @@ class KompassEmptyState extends StatelessWidget {
           children: [
             Icon(icon, size: 72, color: AppColors.sandDark),
             const SizedBox(height: 16),
+            if (title != null) ...[
+              Text(
+                title!,
+                style: AppTextStyles.headlineMedium.copyWith(color: AppColors.textPrimary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               message,
               style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textHint),

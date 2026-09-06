@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
-import '../../../core/utils/validators.dart';
-import '../../../core/widgets/kompass_button.dart';
-import '../../../core/widgets/kompass_card.dart';
-import '../../../routing/route_names.dart';
-import '../providers/auth_providers.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/validators.dart';
+import '../../../../core/widgets/kompass_button.dart';
+import '../../../../core/widgets/kompass_card.dart';
+import '../../../../routing/route_names.dart';
+import '../../providers/auth_providers.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -71,12 +71,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Icon(
                   Icons.explore,
                   size: 80,
-                  color: AppColors.primary,
+                  color: AppColors.primaryGold,
                 ),
                 const SizedBox(height: 16),
                 Text(
                   'KOMPASS',
-                  style: AppTextStyles.h1.copyWith(
+                  style: AppTextStyles.displayLarge.copyWith(
                     color: AppColors.textPrimary,
                     letterSpacing: 4,
                   ),
@@ -84,7 +84,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 8),
                 Text(
                   'Navigate Together, Explore Forever',
-                  style: AppTextStyles.bodyText.copyWith(
+                  style: AppTextStyles.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
                 ),
@@ -128,13 +128,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   : () => context.pushNamed(RouteNames.forgotPassword),
                               child: Text(
                                 'Forgot Password?',
-                                style: TextStyle(color: AppColors.primary),
+                                style: TextStyle(color: AppColors.primaryGold),
                               ),
                             ),
                           ),
                           const SizedBox(height: 24),
-                          KompassButton(
-                            text: 'LOG IN',
+                          KompassButton(label: 'LOG IN',
                             onPressed: _submit,
                             isLoading: isLoading,
                           ),
@@ -145,7 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : () => context.pushNamed(RouteNames.register),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.textPrimary,
-                              side: BorderSide(color: AppColors.primary),
+                              side: BorderSide(color: AppColors.primaryGold),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),

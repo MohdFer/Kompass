@@ -26,7 +26,7 @@ class FirebaseItineraryRepository implements ItineraryRepository {
     final json = itinerary.toJson();
     json.remove('itineraryId');
     json['createdAt'] = FieldValue.serverTimestamp();
-    json['date'] = Timestamp.parse(itinerary.date.toIso8601String());
+    json['date'] = Timestamp.fromDate(itinerary.date);
 
     final docRef = await _getItineraryCollection(tourId).add(json);
     return docRef.id;
@@ -36,7 +36,7 @@ class FirebaseItineraryRepository implements ItineraryRepository {
   Future<void> updateItinerary(String tourId, ItineraryModel itinerary) async {
     final json = itinerary.toJson();
     json.remove('itineraryId');
-    json['date'] = Timestamp.parse(itinerary.date.toIso8601String());
+    json['date'] = Timestamp.fromDate(itinerary.date);
     
     await _getItineraryCollection(tourId)
         .doc(itinerary.itineraryId)
