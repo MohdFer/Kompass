@@ -14,7 +14,7 @@ class KompassApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'KOMPASS',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.darkTheme,
       routerConfig: router,
     );
   }

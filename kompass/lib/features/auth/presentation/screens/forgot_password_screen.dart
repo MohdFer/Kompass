@@ -68,7 +68,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
         title: const Text('Reset Password'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: SafeArea(
         child: Center(
@@ -87,7 +87,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
+        const Icon(
           Icons.lock_reset,
           size: 64,
           color: AppColors.primaryGold,
@@ -142,7 +142,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(
+        const Icon(
           Icons.mark_email_read,
           size: 80,
           color: AppColors.accentRed,

@@ -70,7 +70,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         title: const Text('Enlist'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: IconThemeData(color: AppColors.textPrimary),
+        iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),
       body: SafeArea(
         child: Center(
@@ -79,7 +79,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.person_add_alt_1,
                   size: 64,
                   color: AppColors.primaryGold,
@@ -163,7 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           const SizedBox(height: 16),
                           TextButton(
                             onPressed: isLoading ? null : () => context.pop(),
-                            child: Text(
+                            child: const Text(
                               'Already have an account? Log In',
                               style: TextStyle(color: AppColors.textSecondary),
                             ),

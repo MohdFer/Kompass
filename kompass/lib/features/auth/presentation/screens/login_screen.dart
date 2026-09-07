@@ -68,7 +68,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.explore,
                   size: 80,
                   color: AppColors.primaryGold,
@@ -126,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               onPressed: isLoading
                                   ? null
                                   : () => context.pushNamed(RouteNames.forgotPassword),
-                              child: Text(
+                              child: const Text(
                                 'Forgot Password?',
                                 style: TextStyle(color: AppColors.primaryGold),
                               ),
@@ -144,7 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 : () => context.pushNamed(RouteNames.register),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: AppColors.textPrimary,
-                              side: BorderSide(color: AppColors.primaryGold),
+                              side: const BorderSide(color: AppColors.primaryGold),
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
