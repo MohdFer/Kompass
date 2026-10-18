@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/enums/user_role.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/widgets/kompass_logo.dart';
 import '../../../../routing/route_names.dart';
 import '../../providers/auth_providers.dart';
 
@@ -84,19 +85,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Minimalist geometric compass mark
-                SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: CustomPaint(
-                    painter: _MinimalCompassPainter(
-                      primaryColor: AppColors.primaryNeon,
-                      secondaryColor: Colors.white,
-                    ),
-                  ),
-                ),
+                const KompassLogoMark(size: 64),
                 const SizedBox(height: 20),
-                // Clean, iconic wordmark
                 Text(
                   'KOMPASS',
                   style: AppTextStyles.displayLarge.copyWith(
@@ -113,75 +103,4 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       ),
     );
   }
-}
-
-/// Crisp, minimal geometric compass emblem (no raster artifacts or AI glow).
-class _MinimalCompassPainter extends CustomPainter {
-  const _MinimalCompassPainter({
-    required this.primaryColor,
-    required this.secondaryColor,
-  });
-
-  final Color primaryColor;
-  final Color secondaryColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width / 2;
-
-    // Subtle outer ring
-    final ringPaint = Paint()
-      ..color = secondaryColor.withValues(alpha: 0.85)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..isAntiAlias = true;
-
-    canvas.drawCircle(center, radius - 2, ringPaint);
-
-    // North needle (accent color)
-    final northPath = Path()
-      ..moveTo(center.dx, center.dy - (radius * 0.72))
-      ..lineTo(center.dx + (radius * 0.20), center.dy)
-      ..lineTo(center.dx - (radius * 0.20), center.dy)
-      ..close();
-
-    final northPaint = Paint()
-      ..color = primaryColor
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    // South needle (clean white)
-    final southPath = Path()
-      ..moveTo(center.dx, center.dy + (radius * 0.72))
-      ..lineTo(center.dx + (radius * 0.20), center.dy)
-      ..lineTo(center.dx - (radius * 0.20), center.dy)
-      ..close();
-
-    final southPaint = Paint()
-      ..color = secondaryColor.withValues(alpha: 0.9)
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-
-    // Save canvas and rotate slightly (28 degrees) for an iconic dynamic compass needle
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(0.48);
-    canvas.translate(-center.dx, -center.dy);
-
-    canvas.drawPath(northPath, northPaint);
-    canvas.drawPath(southPath, southPaint);
-
-    // Center pivot dot
-    final pivotPaint = Paint()
-      ..color = AppColors.background
-      ..style = PaintingStyle.fill
-      ..isAntiAlias = true;
-    canvas.drawCircle(center, 3.0, pivotPaint);
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _MinimalCompassPainter oldDelegate) => false;
 }

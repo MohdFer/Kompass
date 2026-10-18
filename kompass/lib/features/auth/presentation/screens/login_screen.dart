@@ -9,6 +9,7 @@ import '../../../../core/utils/app_toast.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
+import '../../../../core/widgets/kompass_logo.dart';
 import '../../../../routing/route_names.dart';
 import '../../providers/auth_providers.dart';
 
@@ -74,44 +75,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 92,
-                  height: 92,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(22),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primaryGold.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(22),
-                    child: Image.asset(
-                      'assets/images/logo.png',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.explore,
-                        size: 80,
-                        color: AppColors.primaryGold,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const KompassLogoMark(size: 64),
+                const SizedBox(height: 18),
                 Text(
                   'KOMPASS',
                   style: AppTextStyles.displayLarge.copyWith(
                     color: AppColors.textPrimary,
-                    letterSpacing: 4,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Navigate Together, Explore Forever',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 6,
                   ),
                 ),
                 const SizedBox(height: 36),
