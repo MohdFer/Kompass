@@ -5,7 +5,7 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="KOMPASS: Navigate Together, Explore Forever">
+  <meta name="description" content="KOMPASS">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -38,9 +38,9 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: radial-gradient(circle at center, rgba(156, 255, 80, 0.08) 0%, #000000 70%);
+      background-color: #000000;
       z-index: 999999;
-      transition: opacity 0.45s ease-out, visibility 0.45s ease-out;
+      transition: opacity 0.35s ease-out, visibility 0.35s ease-out;
     }
 
     #kompass-splash.fade-out {
@@ -49,77 +49,38 @@
       pointer-events: none;
     }
 
-    .splash-logo-wrapper {
-      position: relative;
-      width: 132px;
-      height: 132px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 24px;
-    }
-
-    .splash-ring {
-      position: absolute;
-      inset: -8px;
-      border-radius: 50%;
-      border: 2px solid #333333;
-      border-top-color: #E4FF00;
-      border-right-color: #9CFF50;
-      animation: spin 1.6s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
-    }
-
-    .splash-logo {
-      width: 112px;
-      height: 112px;
-      border-radius: 50%;
-      box-shadow: 0 0 28px rgba(156, 255, 80, 0.25);
-      animation: pulse 2.2s ease-in-out infinite;
+    .splash-mark {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 20px;
     }
 
     .splash-title {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 6px;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: 7px;
       color: #FFFFFF;
-      margin: 0 0 8px 0;
-    }
-
-    .splash-tagline {
-      font-size: 14px;
-      color: #898989;
-      letter-spacing: 1px;
-      margin: 0 0 32px 0;
-    }
-
-    .splash-status {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #9CFF50;
-      opacity: 0.9;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.04); }
+      margin: 0;
+      padding-left: 7px;
     }
   </style>
 </head>
 <body>
   <div id="kompass-splash">
-    <div class="splash-logo-wrapper">
-      <div class="splash-ring"></div>
-      <img class="splash-logo" src="icons/Icon-192.png" alt="KOMPASS Logo" />
-    </div>
+    <svg class="splash-mark" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Outer ring -->
+      <circle cx="32" cy="32" r="30" stroke="white" stroke-opacity="0.85" stroke-width="2.2"/>
+      <!-- Rotated compass needle (~27.5 deg) -->
+      <g transform="rotate(27.5 32 32)">
+        <!-- North needle (#E4FF00) -->
+        <polygon points="32,8.96 38.4,32 25.6,32" fill="#E4FF00"/>
+        <!-- South needle (White) -->
+        <polygon points="32,55.04 38.4,32 25.6,32" fill="white" fill-opacity="0.9"/>
+        <!-- Center pivot dot -->
+        <circle cx="32" cy="32" r="3" fill="#000000"/>
+      </g>
+    </svg>
     <h1 class="splash-title">KOMPASS</h1>
-    <p class="splash-tagline">Navigate Together, Explore Forever</p>
-    <div class="splash-status" id="splash-status-text">Loading Framework...</div>
   </div>
 
   <script>
@@ -131,7 +92,7 @@
           if (splash && splash.parentNode) {
             splash.parentNode.removeChild(splash);
           }
-        }, 500);
+        }, 400);
       }
     });
   </script>
