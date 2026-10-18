@@ -28,6 +28,7 @@ class AppColors {
   // Text Colors
   static const Color textPrimary = Color(0xFFFFFFFF); // White
   static const Color textSecondary = Color(0xFF898989); // Medium Gray
+  static const Color textTertiary = Color(0xFF7E7E7E); // Light Gray
   static const Color textOnPrimary = Color(0xFF000000); // Black text on Neon
 
   // Aliases for compatibility with existing code

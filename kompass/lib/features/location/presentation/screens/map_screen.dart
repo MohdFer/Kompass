@@ -11,6 +11,10 @@ import '../../../../core/utils/app_toast.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../../tour/providers/tour_providers.dart';
+import '../../../tour/data/models/tour_model.dart';
+import '../../../../services/permissions/app_permission_service.dart';
+import '../../../../services/storage/hive_service.dart';
+import '../../../auth/data/models/user_model.dart';
 import '../../data/models/location_model.dart';
 import '../../providers/location_providers.dart';
 
@@ -56,6 +60,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
   GreenMapStyle _mapStyle = GreenMapStyle.emeraldRadar;
   String? _statusMessage;
   late final AnimationController _pulseController;
+  bool _visibleToEveryone = true;
+  List<String> _visibleToUserIds = <String>[];
 
   // Scenic fallback coordinate if device GPS is off and no pins exist yet
   static const LatLng _defaultCenter = LatLng(12.9716, 77.5946);
@@ -91,6 +97,13 @@ class _MapScreenState extends ConsumerState<MapScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
+
+    final everyoneKey = 'loc_vis_everyone_${widget.tourId}';
+    final usersKey = 'loc_vis_users_${widget.tourId}';
+    _visibleToEveryone = HiveService.instance.getSetting<bool>(everyoneKey) ?? true;
+    final rawUsers = HiveService.instance.getSetting<List<dynamic>>(usersKey) ?? [];
+    _visibleToUserIds = rawUsers.map((e) => e.toString()).toList();
+
     _getCurrentLocation();
   }
 
@@ -121,6 +134,17 @@ class _MapScreenState extends ConsumerState<MapScreen>
             _statusMessage =
                 'GPS service is disabled. Tap anywhere on the map to set your pin.';
           });
+          final turnedOn = await AppPermissionService.instance.checkAndPromptGps(
+            context: context,
+            title: 'Turn On Location (GPS)',
+            message:
+                'GPS is turned off on your device.\n\n'
+                'KOMPASS requires active GPS to display and stream your live position on the map.\n\n'
+                'Please turn on Location in your device settings.',
+          );
+          if (turnedOn && mounted) {
+            _getCurrentLocation(recenter: recenter);
+          }
         }
         return;
       }
@@ -204,6 +228,8 @@ class _MapScreenState extends ConsumerState<MapScreen>
       latitude: point.latitude,
       longitude: point.longitude,
       userName: userName,
+      visibleToEveryone: isRallyPoint ? true : _visibleToEveryone,
+      visibleToUserIds: isRallyPoint ? const [] : _visibleToUserIds,
     );
     await ref.read(locationRepositoryProvider).saveLocation(location);
   }
@@ -224,10 +250,6 @@ class _MapScreenState extends ConsumerState<MapScreen>
     final tour = ref.watch(tourDetailProvider(widget.tourId)).valueOrNull;
     final isGuideForTour =
         currentUser != null && tour != null && tour.guideId == currentUser.userId;
-    final allLocations = locationsAsync.valueOrNull ?? [];
-    final currentTourLocations = allLocations
-        .where((loc) => loc.tourId == widget.tourId)
-        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFF071A12),
@@ -235,9 +257,47 @@ class _MapScreenState extends ConsumerState<MapScreen>
         title: 'Emerald Expedition Map',
         actions: [
           IconButton(
+            icon: Icon(
+              _visibleToEveryone
+                  ? Icons.visibility
+                  : (_visibleToUserIds.isEmpty
+                      ? Icons.shield_outlined
+                      : Icons.group_outlined),
+              color: const Color(0xFF34D399),
+            ),
+            tooltip: 'Location Visibility Settings',
+            onPressed: () => _showVisibilitySettingsSheet(context, tour),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Color(0xFF34D399)),
+            tooltip: 'Refresh Live Map & GPS',
+            onPressed: () async {
+              ref.invalidate(locationsStreamProvider);
+              ref.invalidate(tourDetailProvider(widget.tourId));
+              await _getCurrentLocation();
+              if (context.mounted) {
+                AppToast.showInfo('Map & live crew pins refreshed', context: context);
+              }
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.person_search, color: Color(0xFF34D399)),
             tooltip: 'Search & Locate Participants',
-            onPressed: () => _showSearchParticipantsSheet(context, currentTourLocations),
+            onPressed: () {
+              final allLocs = locationsAsync.valueOrNull ?? [];
+              final filtered = allLocs.where((loc) => loc.tourId == widget.tourId).where((loc) {
+                if (loc.userId == 'rally_point') return true;
+                if (currentUser != null && loc.userId == currentUser.userId) return true;
+                if (tour != null && loc.userId == tour.guideId) return true;
+                if (isGuideForTour) return true;
+                if (loc.visibleToEveryone) return true;
+                if (currentUser != null && loc.visibleToUserIds.contains(currentUser.userId)) {
+                  return true;
+                }
+                return false;
+              }).toList();
+              _showSearchParticipantsSheet(context, filtered);
+            },
           ),
           IconButton(
             icon: Icon(
@@ -321,9 +381,28 @@ class _MapScreenState extends ConsumerState<MapScreen>
             )
           : locationsAsync.when(
               data: (allLocations) {
-                final tourLocations = allLocations
+                final allTourLocations = allLocations
                     .where((loc) => loc.tourId == widget.tourId)
                     .toList();
+
+                // Apply participant visibility filter
+                final tourLocations = allTourLocations.where((loc) {
+                  // 1. Rally points are always visible
+                  if (loc.userId == 'rally_point') return true;
+                  // 2. Current user always sees their own pin
+                  if (currentUser != null && loc.userId == currentUser.userId) return true;
+                  // 3. Tour guide is always visible so no participant gets lost
+                  if (tour != null && loc.userId == tour.guideId) return true;
+                  // 4. Tour guide has safety oversight of all tour participants
+                  if (isGuideForTour) return true;
+                  // 5. If broadcast visible to everyone in tour
+                  if (loc.visibleToEveryone) return true;
+                  // 6. If broadcast to specific user IDs and viewer is included
+                  if (currentUser != null && loc.visibleToUserIds.contains(currentUser.userId)) {
+                    return true;
+                  }
+                  return false;
+                }).toList();
 
                 // Determine initial center: current GPS -> guide/crew pin -> default center
                 final initialCenter = _currentPosition ??
@@ -550,6 +629,59 @@ class _MapScreenState extends ConsumerState<MapScreen>
                                       ),
                                     ),
                                   ],
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: () => _showVisibilitySettingsSheet(context, tour),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF0D3326),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color: const Color(0xFF10B981).withValues(alpha: 0.4),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          _visibleToEveryone
+                                              ? Icons.public_rounded
+                                              : (_visibleToUserIds.isEmpty
+                                                  ? Icons.shield_rounded
+                                                  : Icons.group_rounded),
+                                          size: 15,
+                                          color: const Color(0xFF34D399),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: Text(
+                                            _visibleToEveryone
+                                                ? 'My GPS Visible To: Everyone in Tour'
+                                                : (_visibleToUserIds.isEmpty
+                                                    ? 'My GPS Visible To: Tour Guide Only'
+                                                    : 'My GPS Visible To: ${_visibleToUserIds.length} Selected Member(s)'),
+                                            style: const TextStyle(
+                                              color: Color(0xFFECFDF5),
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        const Text(
+                                          'Change',
+                                          style: TextStyle(
+                                            color: Color(0xFF34D399),
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 2),
+                                        const Icon(Icons.chevron_right, size: 14, color: Color(0xFF34D399)),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                                 const SizedBox(height: 8),
                                 SingleChildScrollView(
@@ -1074,6 +1206,446 @@ class _MapScreenState extends ConsumerState<MapScreen>
           },
         );
       },
+    );
+  }
+
+  void _showVisibilitySettingsSheet(BuildContext context, TourModel? tour) {
+    final currentUser = ref.read(currentUserProvider).valueOrNull;
+    final allUsers = ref.read(allUsersProvider).valueOrNull ?? [];
+
+    // Filter tour members: users who are enrolled in this tour (except current user)
+    final memberIds = <String>{
+      if (tour != null) ...tour.participantIds,
+      if (tour != null && tour.guideId.isNotEmpty) tour.guideId,
+    }..remove(currentUser?.userId ?? '');
+
+    final tourMembers = allUsers.where((u) => memberIds.contains(u.userId)).toList();
+    // In case some participant IDs aren't in allUsers yet, make fallback UserModel items
+    final foundIds = tourMembers.map((u) => u.userId).toSet();
+    for (final id in memberIds) {
+      if (!foundIds.contains(id)) {
+        tourMembers.add(UserModel(
+          userId: id,
+          email: '',
+          name: id == tour?.guideId ? 'Tour Guide' : 'Crew Member ($id)',
+          role: id == tour?.guideId ? 'guide' : 'participant',
+        ));
+      }
+    }
+
+    int mode = _visibleToEveryone
+        ? 0
+        : (_visibleToUserIds.isEmpty ? 1 : 2); // 0: Everyone, 1: Guide Only, 2: Specific
+    final tempSelectedUsers = Set<String>.from(_visibleToUserIds);
+    String searchQuery = '';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF071F17),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredMembers = tourMembers.where((m) {
+              if (searchQuery.isEmpty) return true;
+              final q = searchQuery.toLowerCase();
+              return m.name.toLowerCase().contains(q) ||
+                  m.email.toLowerCase().contains(q);
+            }).toList();
+
+            return DraggableScrollableSheet(
+              initialChildSize: mode == 2 ? 0.78 : 0.52,
+              minChildSize: 0.38,
+              maxChildSize: 0.92,
+              expand: false,
+              builder: (ctx, scrollController) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF34D399).withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.share_location_rounded,
+                              color: Color(0xFF34D399),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Location Visibility',
+                                  style: TextStyle(
+                                    color: Color(0xFFECFDF5),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Choose who can see your GPS pin on the map',
+                                  style: TextStyle(
+                                    color: const Color(0xFFD1FAE5)
+                                        .withValues(alpha: 0.7),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Option 0: Everyone
+                      _buildVisibilityOptionTile(
+                        title: 'Everyone in Tour',
+                        subtitle:
+                            'All participants and guides can see your live position',
+                        icon: Icons.public_rounded,
+                        isSelected: mode == 0,
+                        onTap: () => setModalState(() => mode = 0),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Option 1: Guide Only
+                      _buildVisibilityOptionTile(
+                        title: 'Tour Guide Only',
+                        subtitle:
+                            'Only the tour guide can view your pin for safety & roll call',
+                        icon: Icons.shield_rounded,
+                        isSelected: mode == 1,
+                        onTap: () => setModalState(() => mode = 1),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Option 2: Specific Members
+                      _buildVisibilityOptionTile(
+                        title: 'Specific Crew Members',
+                        subtitle:
+                            'Select individual tour members who are allowed to see you',
+                        icon: Icons.group_rounded,
+                        isSelected: mode == 2,
+                        onTap: () => setModalState(() => mode = 2),
+                      ),
+
+                      // If Specific Members mode selected, show search & member list
+                      if (mode == 2) ...[
+                        const SizedBox(height: 12),
+                        TextField(
+                          onChanged: (val) =>
+                              setModalState(() => searchQuery = val.trim()),
+                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          decoration: InputDecoration(
+                            hintText: 'Search crew members...',
+                            hintStyle: const TextStyle(
+                              color: Color(0xFF6EE7B7),
+                              fontSize: 13,
+                            ),
+                            prefixIcon: const Icon(
+                              Icons.search,
+                              color: Color(0xFF34D399),
+                              size: 20,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF0B3B2D),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${tempSelectedUsers.length} of ${tourMembers.length} selected',
+                              style: const TextStyle(
+                                color: Color(0xFF34D399),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                TextButton(
+                                  onPressed: () {
+                                    setModalState(() {
+                                      tempSelectedUsers.addAll(
+                                        tourMembers.map((m) => m.userId),
+                                      );
+                                    });
+                                  },
+                                  child: const Text(
+                                    'Select All',
+                                    style: TextStyle(
+                                      color: Color(0xFF34D399),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    setModalState(() {
+                                      tempSelectedUsers.clear();
+                                    });
+                                  },
+                                  child: const Text(
+                                    'Clear',
+                                    style: TextStyle(
+                                      color: Color(0xFFA7F3D0),
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Expanded(
+                          child: filteredMembers.isEmpty
+                              ? const Center(
+                                  child: Text(
+                                    'No members found',
+                                    style: TextStyle(color: Color(0xFFA7F3D0)),
+                                  ),
+                                )
+                              : ListView.builder(
+                                  controller: scrollController,
+                                  itemCount: filteredMembers.length,
+                                  itemBuilder: (ctx, idx) {
+                                    final member = filteredMembers[idx];
+                                    final isSelected =
+                                        tempSelectedUsers.contains(member.userId);
+                                    final isGuide =
+                                        member.userId == tour?.guideId;
+
+                                    return CheckboxListTile(
+                                      value: isSelected,
+                                      activeColor: const Color(0xFF34D399),
+                                      checkColor: Colors.black,
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        member.name.isNotEmpty
+                                            ? member.name
+                                            : 'Crew Member',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        isGuide
+                                            ? '★ Tour Guide'
+                                            : (member.email.isNotEmpty
+                                                ? member.email
+                                                : 'Participant'),
+                                        style: TextStyle(
+                                          color: isGuide
+                                              ? AppColors.primaryGold
+                                              : const Color(0xFFA7F3D0),
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                      onChanged: (val) {
+                                        setModalState(() {
+                                          if (val == true) {
+                                            tempSelectedUsers.add(member.userId);
+                                          } else {
+                                            tempSelectedUsers.remove(member.userId);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
+                        ),
+                      ] else
+                        const Spacer(),
+
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF34D399),
+                            foregroundColor: const Color(0xFF051B11),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: () async {
+                            final newEveryone = (mode == 0);
+                            final newUserIds = (mode == 2)
+                                ? tempSelectedUsers.toList()
+                                : <String>[];
+
+                            setState(() {
+                              _visibleToEveryone = newEveryone;
+                              _visibleToUserIds = newUserIds;
+                            });
+
+                            // Save to Hive for persistent state
+                            final everyoneKey =
+                                'loc_vis_everyone_${widget.tourId}';
+                            final usersKey = 'loc_vis_users_${widget.tourId}';
+                            await HiveService.instance.saveSetting(
+                              everyoneKey,
+                              newEveryone,
+                            );
+                            await HiveService.instance.saveSetting(
+                              usersKey,
+                              newUserIds,
+                            );
+
+                            // Update live broadcast on Firestore
+                            if (_currentPosition != null && _isSharingLocation) {
+                              await _broadcastLocation(_currentPosition!);
+                            }
+
+                            Navigator.pop(sheetCtx);
+
+                            if (context.mounted) {
+                              if (newEveryone) {
+                                AppToast.showSuccess(
+                                  'Location visible to Everyone in tour',
+                                  context: context,
+                                );
+                              } else if (mode == 1) {
+                                AppToast.showSuccess(
+                                  'Location visible to Tour Guide only',
+                                  context: context,
+                                );
+                              } else {
+                                AppToast.showSuccess(
+                                  'Location visible to ${newUserIds.length} selected member(s)',
+                                  context: context,
+                                );
+                              }
+                            }
+                          },
+                          child: const Text(
+                            'Save Visibility Settings',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildVisibilityOptionTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF10B981).withValues(alpha: 0.18)
+              : const Color(0xFF0B3B2D).withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF34D399)
+                : const Color(0xFF10B981).withValues(alpha: 0.3),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? const Color(0xFF34D399)
+                  : const Color(0xFF6EE7B7),
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected
+                          ? const Color(0xFF34D399)
+                          : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: const Color(0xFFD1FAE5).withValues(alpha: 0.7),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_off,
+              color: isSelected
+                  ? const Color(0xFF34D399)
+                  : const Color(0xFF6EE7B7),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -17,6 +17,11 @@ _$LocationModelImpl _$$LocationModelImplFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['timestamp'] as String),
       userName: json['userName'] as String? ?? '',
+      visibleToEveryone: json['visibleToEveryone'] as bool? ?? true,
+      visibleToUserIds: (json['visibleToUserIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
     );
 
 Map<String, dynamic> _$$LocationModelImplToJson(_$LocationModelImpl instance) =>
@@ -28,4 +33,6 @@ Map<String, dynamic> _$$LocationModelImplToJson(_$LocationModelImpl instance) =>
       'longitude': instance.longitude,
       'timestamp': instance.timestamp?.toIso8601String(),
       'userName': instance.userName,
+      'visibleToEveryone': instance.visibleToEveryone,
+      'visibleToUserIds': instance.visibleToUserIds,
     };

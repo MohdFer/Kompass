@@ -28,18 +28,25 @@ class TourDetailScreen extends ConsumerWidget {
 
     return tourAsync.when(
       data: (tour) {
-        // Strictly check whether the current user is the Tour Guide of this tour
-        final isGuideForTour = currentUser != null &&
-            tour.guideId == currentUser.userId;
+        final isPrimaryGuide = currentUser != null &&
+            tour.isPrimaryGuide(currentUser.userId);
+        final isGuestGuide = currentUser != null &&
+            tour.isGuestGuide(currentUser.userId);
+        final canManageTour = currentUser != null &&
+            tour.canManageTour(currentUser.userId);
         final guideUser = allUsers
             .where((u) => u.userId == tour.guideId)
             .firstOrNull;
+        final guestGuideNames = allUsers
+            .where((u) => tour.guestGuideIds.contains(u.userId))
+            .map((u) => u.name)
+            .toList();
 
         return Scaffold(
           appBar: KompassAppBar(
             title: 'Tour Details',
             actions: [
-              if (isGuideForTour) ...[
+              if (canManageTour) ...[
                 Stack(
                   alignment: Alignment.topRight,
                   children: [
@@ -51,6 +58,7 @@ class TourDetailScreen extends ConsumerWidget {
                         ref,
                         tour,
                         allUsers,
+                        isPrimaryGuide: isPrimaryGuide,
                       ),
                     ),
                     if (tour.pendingRequestUserIds.isNotEmpty)
@@ -75,6 +83,8 @@ class TourDetailScreen extends ConsumerWidget {
                       ),
                   ],
                 ),
+              ],
+              if (isPrimaryGuide) ...[
                 IconButton(
                   icon: const Icon(Icons.edit),
                   tooltip: 'Edit Tour & Settings',
@@ -106,14 +116,24 @@ class TourDetailScreen extends ConsumerWidget {
               ],
             ],
           ),
-          body: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              KompassCard(
-                margin: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+          body: RefreshIndicator(
+            color: AppColors.primaryGold,
+            backgroundColor: AppColors.surface,
+            onRefresh: () async {
+              ref.invalidate(tourDetailProvider(tourId));
+              ref.invalidate(allUsersProvider);
+              ref.invalidate(currentUserProvider);
+              await Future<void>.delayed(const Duration(milliseconds: 400));
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                KompassCard(
+                  margin: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -131,6 +151,40 @@ class TourDetailScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    if (isGuestGuide) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGold.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.primaryGold.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.shield_outlined,
+                              size: 15,
+                              color: AppColors.primaryGold,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'You are a Guest Guide for this tour',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.primaryGold,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 6),
                     Wrap(
                       spacing: 12,
@@ -205,11 +259,13 @@ class TourDetailScreen extends ConsumerWidget {
                           color: AppColors.primaryGold,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Tour Guide: ${guideUser?.name ?? tour.guideId}',
-                          style: AppTextStyles.bodySmall,
+                        Expanded(
+                          child: Text(
+                            'Tour Guide: ${guideUser?.name ?? tour.guideId}',
+                            style: AppTextStyles.bodySmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
                         const Icon(
                           Icons.people_outline,
                           size: 16,
@@ -222,6 +278,28 @@ class TourDetailScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    if (guestGuideNames.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.shield_outlined,
+                            size: 15,
+                            color: AppColors.secondaryTealLight,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Guest Guide${guestGuideNames.length > 1 ? 's' : ''}: ${guestGuideNames.join(', ')}',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.secondaryTealLight,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     InkWell(
                       onTap: () {
@@ -258,20 +336,22 @@ class TourDetailScreen extends ConsumerWidget {
               _buildFeatureTile(
                 context,
                 title: 'Itinerary & Checkpoints',
-                subtitle: 'Daily schedule, meeting points & activities',
+                subtitle: canManageTour
+                    ? 'Manage daily schedule, meeting points & checkpoints'
+                    : 'View daily schedule, meeting points & activities',
                 icon: Icons.route,
                 onTap: () => context.push('/tours/$tourId/itinerary'),
               ),
               _buildFeatureTile(
                 context,
                 title: 'Attendance & Roll Call',
-                subtitle: isGuideForTour
+                subtitle: canManageTour
                     ? 'Roll call, QR badge scanner & live analytics'
                     : 'Check-in status & attendance history',
                 icon: Icons.fact_check,
                 onTap: () => context.push('/tours/$tourId/attendance'),
               ),
-              if (!isGuideForTour)
+              if (!isPrimaryGuide)
                 _buildFeatureTile(
                   context,
                   title: 'My QR Crew Badge',
@@ -316,7 +396,7 @@ class TourDetailScreen extends ConsumerWidget {
                 iconColor: AppColors.sosRed,
                 onTap: () => context.push('/tours/$tourId/sos'),
               ),
-              if (!isGuideForTour &&
+              if (!isPrimaryGuide &&
                   currentUser != null &&
                   tour.participantIds.contains(currentUser.userId)) ...[
                 const SizedBox(height: 24),
@@ -334,14 +414,30 @@ class TourDetailScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 16),
               ],
-            ],
+              ],
+            ),
           ),
         );
       },
       loading: () => const Scaffold(body: KompassLoading()),
       error: (error, stack) => Scaffold(
         appBar: const KompassAppBar(title: 'Tour Details'),
-        body: Center(child: Text('Error: $error')),
+        body: RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surface,
+          onRefresh: () async {
+            ref.invalidate(tourDetailProvider(tourId));
+            ref.invalidate(allUsersProvider);
+            await Future<void>.delayed(const Duration(milliseconds: 400));
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 160),
+              Center(child: Text('Error: $error')),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -588,8 +684,9 @@ class TourDetailScreen extends ConsumerWidget {
     BuildContext parentContext,
     WidgetRef ref,
     TourModel initialTour,
-    List<UserModel> allUsers,
-  ) {
+    List<UserModel> allUsers, {
+    required bool isPrimaryGuide,
+  }) {
     final emailController = TextEditingController();
     bool isSendingInvite = false;
     String participantSearchQuery = '';
@@ -633,7 +730,7 @@ class TourDetailScreen extends ConsumerWidget {
                       ),
                       children: [
                         Text(
-                          'Participant & Invite Management',
+                          'Participant & Guest Guide Management',
                           style: AppTextStyles.headlineLarge,
                         ),
                         const SizedBox(height: 12),
@@ -888,7 +985,7 @@ class TourDetailScreen extends ConsumerWidget {
                           }),
                         ],
 
-                        // ── 5. Enrolled Participants with Search ──
+                        // ── 5. Enrolled Participants & Guest Guide Promotion ──
                         const Divider(height: 28),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -897,8 +994,25 @@ class TourDetailScreen extends ConsumerWidget {
                               'Enrolled Participants (${liveTour.participantIds.length})',
                               style: AppTextStyles.labelLarge,
                             ),
+                            if (liveTour.guestGuideIds.isNotEmpty)
+                              Text(
+                                '${liveTour.guestGuideIds.length} Guest Guide(s)',
+                                style: AppTextStyles.bodySmall.copyWith(
+                                  color: AppColors.primaryGold,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                           ],
                         ),
+                        if (isPrimaryGuide) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tip: Tap the shield button next to any participant to promote or revoke them as a Guest Guide.',
+                            style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         TextField(
                           onChanged: (val) => setSheetState(() => participantSearchQuery = val.trim().toLowerCase()),
@@ -940,32 +1054,130 @@ class TourDetailScreen extends ConsumerWidget {
 
                             return Column(
                               children: matchingEnrolled.map((user) {
+                                final isGuest = liveTour.isGuestGuide(user.userId);
                                 return ListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  leading: const Icon(
-                                    Icons.verified_user_outlined,
-                                    color: AppColors.success,
-                                  ),
-                                  title: Text(user.name),
-                                  subtitle: Text(user.email),
-                                  trailing: IconButton(
-                                    icon: const Icon(
-                                      Icons.remove_circle_outline,
-                                      color: AppColors.error,
+                                  leading: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: isGuest
+                                        ? AppColors.primaryGold.withValues(alpha: 0.2)
+                                        : AppColors.success.withValues(alpha: 0.15),
+                                    child: Icon(
+                                      isGuest ? Icons.shield : Icons.verified_user_outlined,
+                                      size: 18,
+                                      color: isGuest ? AppColors.primaryGold : AppColors.success,
                                     ),
-                                    tooltip: 'Remove from Tour',
-                                    onPressed: () async {
-                                      try {
-                                        await sheetRef
-                                            .read(tourControllerProvider.notifier)
-                                            .removeParticipant(liveTour.tourId, user.userId);
-                                        AppToast.showInfo(
-                                          'Removed ${user.name} from the tour.',
-                                        );
-                                      } catch (e) {
-                                        AppToast.showError('Failed to remove participant: $e');
-                                      }
-                                    },
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          user.name,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (isGuest) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primaryGold,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Text(
+                                            'Guest Guide',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  subtitle: Text(user.email),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (isPrimaryGuide)
+                                        OutlinedButton.icon(
+                                          style: OutlinedButton.styleFrom(
+                                            foregroundColor: isGuest
+                                                ? AppColors.warning
+                                                : AppColors.primaryGold,
+                                            side: BorderSide(
+                                              color: isGuest
+                                                  ? AppColors.warning
+                                                  : AppColors.primaryGold,
+                                            ),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 6,
+                                            ),
+                                            minimumSize: const Size(0, 32),
+                                          ),
+                                          icon: Icon(
+                                            isGuest
+                                                ? Icons.remove_moderator_outlined
+                                                : Icons.add_moderator_outlined,
+                                            size: 15,
+                                          ),
+                                          label: Text(
+                                            isGuest
+                                                ? 'Revoke Guide'
+                                                : 'Make Guest Guide',
+                                            style: const TextStyle(fontSize: 11),
+                                          ),
+                                          onPressed: () async {
+                                            try {
+                                              await sheetRef
+                                                  .read(tourControllerProvider.notifier)
+                                                  .toggleGuestGuide(
+                                                    liveTour.tourId,
+                                                    user.userId,
+                                                    isGuestGuide: !isGuest,
+                                                  );
+                                              if (!isGuest) {
+                                                AppToast.showSuccess(
+                                                  '${user.name} promoted to Guest Guide!',
+                                                );
+                                              } else {
+                                                AppToast.showInfo(
+                                                  'Guest Guide status revoked for ${user.name}.',
+                                                );
+                                              }
+                                            } catch (e) {
+                                              AppToast.showError(
+                                                'Failed to update Guest Guide status: $e',
+                                              );
+                                            }
+                                          },
+                                        ),
+                                      if (isPrimaryGuide)
+                                        IconButton(
+                                          icon: const Icon(
+                                            Icons.remove_circle_outline,
+                                            color: AppColors.error,
+                                          ),
+                                          tooltip: 'Remove from Tour',
+                                          onPressed: () async {
+                                            try {
+                                              await sheetRef
+                                                  .read(tourControllerProvider.notifier)
+                                                  .removeParticipant(liveTour.tourId, user.userId);
+                                              AppToast.showInfo(
+                                                'Removed ${user.name} from the tour.',
+                                              );
+                                            } catch (e) {
+                                              AppToast.showError('Failed to remove participant: $e');
+                                            }
+                                          },
+                                        ),
+                                    ],
                                   ),
                                 );
                               }).toList(),

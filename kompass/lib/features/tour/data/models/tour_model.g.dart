@@ -18,6 +18,11 @@ _$TourModelImpl _$$TourModelImplFromJson(Map<String, dynamic> json) =>
           ? null
           : DateTime.parse(json['endDate'] as String),
       guideId: json['guideId'] as String,
+      guestGuideIds:
+          (json['guestGuideIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       participantIds:
           (json['participantIds'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -49,6 +54,7 @@ Map<String, dynamic> _$$TourModelImplToJson(_$TourModelImpl instance) =>
       'startDate': instance.startDate?.toIso8601String(),
       'endDate': instance.endDate?.toIso8601String(),
       'guideId': instance.guideId,
+      'guestGuideIds': instance.guestGuideIds,
       'participantIds': instance.participantIds,
       'invitedUserIds': instance.invitedUserIds,
       'pendingRequestUserIds': instance.pendingRequestUserIds,

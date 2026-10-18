@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'chat_notification_service.dart';
 
 /// Service for handling push notifications & local device notification alerts.
 class NotificationService {
@@ -93,12 +96,39 @@ class NotificationService {
       if (!kIsWeb) {
         final token = await _messaging.getToken();
         debugPrint('FCM Token: $token');
+        _messaging.onTokenRefresh.listen((newToken) {
+          debugPrint('FCM Token Refreshed: $newToken');
+        });
       }
 
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
       FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+
+      // Handle notification tap when app is launched from terminated state
+      final initialMessage = await _messaging.getInitialMessage();
+      if (initialMessage != null) {
+        _handleNotificationTap(initialMessage);
+      }
     } catch (e) {
       debugPrint('FCM init error: $e');
+    }
+  }
+
+  /// Save device FCM push token to the user document in Firestore so push notifications can reach this user.
+  Future<void> saveUserToken(String userId) async {
+    if (kIsWeb) return;
+    try {
+      final token = await _messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        await FirebaseFirestore.instance.collection('Users').doc(userId).set({
+          'fcmToken': token,
+          'fcmTokens': FieldValue.arrayUnion([token]),
+          'lastTokenUpdate': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+        debugPrint('Saved FCM token to user document $userId');
+      }
+    } catch (e) {
+      debugPrint('Error saving FCM token to user document: $e');
     }
   }
 
@@ -109,21 +139,33 @@ class NotificationService {
     required String body,
     String? payload,
   }) async {
+    if (kIsWeb) return;
+
+    // Ensure 32-bit signed integer compatibility required by Android NotificationManager
+    final int safeId = id.abs() & 0x7FFFFFFF;
+
     const androidDetails = AndroidNotificationDetails(
       'kompass_chat_channel',
       'KOMPASS Expedition Radio',
       channelDescription:
-          'Notifications for tour chat messages and group alerts',
+          'Notifications for tour chat messages, announcements, and SOS alerts',
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
+      ticker: 'KOMPASS Alert',
       icon: '@mipmap/ic_launcher',
     );
 
     const details = NotificationDetails(android: androidDetails);
     try {
-      await _localNotifications.show(id, title, body, details, payload: payload);
+      await _localNotifications.show(
+        safeId,
+        title,
+        body,
+        details,
+        payload: payload,
+      );
     } catch (e) {
       debugPrint('Error showing local notification: $e');
     }
@@ -132,12 +174,39 @@ class NotificationService {
   /// Handle messages received while app is in foreground.
   void _handleForegroundMessage(RemoteMessage message) {
     debugPrint('Foreground FCM message: ${message.notification?.title}');
+
+    // Skip notifying sender about their own dispatched message
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final senderId = message.data['senderId']?.toString();
+    if (currentUserId != null && senderId != null && currentUserId == senderId) {
+      debugPrint('Skipping self-sent FCM notification in foreground');
+      return;
+    }
+
+    final String? tourId = message.data['tourId']?.toString();
+    final String? type = message.data['type']?.toString();
+
+    // If currently looking at this active tour chat screen, suppress notification
+    if (type == 'chat' &&
+        tourId != null &&
+        ChatNotificationService.instance.activeChatTourId == tourId) {
+      debugPrint('Suppressing chat notification because user is actively inside this chat room');
+      return;
+    }
+
+    // Suppress if in-app live listener already displayed this notification
+    final messageId = message.data['messageId']?.toString();
+    if (messageId != null &&
+        ChatNotificationService.instance.hasSeenMessage(messageId)) {
+      debugPrint('Already shown by Firestore live listener: $messageId');
+      return;
+    }
+
     final String title = message.notification?.title ??
         message.data['title']?.toString() ??
         'KOMPASS Chat';
     final String body =
         message.notification?.body ?? message.data['body']?.toString() ?? '';
-    final String? tourId = message.data['tourId']?.toString();
 
     if (body.isNotEmpty) {
       showNotification(

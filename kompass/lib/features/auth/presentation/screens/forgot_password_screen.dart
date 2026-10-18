@@ -34,6 +34,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
             _emailController.text.trim(),
           );
       
+      if (!mounted) return;
       if (!ref.read(authControllerProvider).hasError) {
         AppToast.showSuccess('Password reset link sent to your email.');
         setState(() {

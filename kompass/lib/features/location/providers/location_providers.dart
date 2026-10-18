@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../core/enums/tour_status.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../services/storage/hive_service.dart';
 import '../../auth/data/models/user_model.dart';
 import '../../auth/providers/auth_providers.dart';
 import '../../tour/data/models/tour_model.dart';
@@ -19,18 +21,38 @@ final locationsStreamProvider = StreamProvider<List<LocationModel>>((ref) {
   return repository.streamLocations();
 });
 
+/// Notifier that informs the app whether GPS is required (active tour + streaming consent) but currently turned off.
+class GpsStatusNotifier extends ChangeNotifier {
+  bool _isGpsDisabledWhenRequired = false;
+  bool get isGpsDisabledWhenRequired => _isGpsDisabledWhenRequired;
+
+  void setGpsDisabled(bool value) {
+    if (_isGpsDisabledWhenRequired != value) {
+      _isGpsDisabledWhenRequired = value;
+      notifyListeners();
+    }
+  }
+}
+
+final gpsStatusProvider = ChangeNotifierProvider<GpsStatusNotifier>((ref) {
+  return TourLocationTrackerService.instance.gpsNotifier;
+});
+
 /// Service that coordinates automatic periodic location tracking for enrolled users
-/// during the active tour timeframe.
+/// during the active tour timeframe when location streaming consent is granted.
 class TourLocationTrackerService {
   TourLocationTrackerService._();
   static final instance = TourLocationTrackerService._();
+
+  final GpsStatusNotifier gpsNotifier = GpsStatusNotifier();
+  DateTime? _lastGpsToastTime;
 
   Timer? _trackingTimer;
   bool _isTracking = false;
   bool get isTracking => _isTracking;
 
   /// Syncs active tracking: if user is enrolled in an active tour whose current time
-  /// is within tour dates, periodic location tracking is initiated.
+  /// is within tour dates and the user permits location streaming, periodic tracking is initiated.
   void syncActiveTourTracking({
     required UserModel? user,
     required List<TourModel> allTours,
@@ -38,6 +60,7 @@ class TourLocationTrackerService {
   }) {
     if (user == null) {
       _stopTracking();
+      gpsNotifier.setGpsDisabled(false);
       return;
     }
 
@@ -61,10 +84,21 @@ class TourLocationTrackerService {
 
     if (activeTours.isEmpty) {
       _stopTracking();
+      gpsNotifier.setGpsDisabled(false);
       return;
     }
 
-    // 3. Start or maintain active periodic tracking
+    // 3. Verify user consent: Guides always stream; participants must have location_sharing enabled
+    final isGuide = user.role == 'guide' || activeTours.any((t) => t.guideId == user.userId);
+    final hasPermittedStreaming = isGuide || HiveService.instance.isLocationSharingEnabled;
+
+    if (!hasPermittedStreaming) {
+      _stopTracking();
+      gpsNotifier.setGpsDisabled(false);
+      return;
+    }
+
+    // 4. Start or maintain active periodic tracking
     if (_trackingTimer == null || !_trackingTimer!.isActive) {
       _isTracking = true;
       _triggerSingleLocationUpdate(user, activeTours, repository);
@@ -82,7 +116,19 @@ class TourLocationTrackerService {
   ) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+      if (!serviceEnabled) {
+        gpsNotifier.setGpsDisabled(true);
+
+        // Notify user via warning toast (throttled every 3 minutes)
+        final now = DateTime.now();
+        if (_lastGpsToastTime == null || now.difference(_lastGpsToastTime!) > const Duration(minutes: 3)) {
+          _lastGpsToastTime = now;
+          AppToast.showWarning('GPS is turned off. Location sharing is active for your tour. Please turn on Location in Settings.');
+        }
+        return;
+      }
+
+      gpsNotifier.setGpsDisabled(false);
 
       var permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -101,6 +147,12 @@ class TourLocationTrackerService {
       );
 
       for (final tour in activeTours) {
+        final everyoneKey = 'loc_vis_everyone_${tour.tourId}';
+        final usersKey = 'loc_vis_users_${tour.tourId}';
+        final visibleToEveryone = HiveService.instance.getSetting<bool>(everyoneKey) ?? true;
+        final rawUsers = HiveService.instance.getSetting<List<dynamic>>(usersKey) ?? [];
+        final visibleToUserIds = rawUsers.map((e) => e.toString()).toList();
+
         final loc = LocationModel(
           locationId: '${tour.tourId}_${user.userId}',
           tourId: tour.tourId,
@@ -108,6 +160,8 @@ class TourLocationTrackerService {
           latitude: position.latitude,
           longitude: position.longitude,
           userName: user.name,
+          visibleToEveryone: visibleToEveryone,
+          visibleToUserIds: visibleToUserIds,
         );
         await repository.saveLocation(loc);
       }

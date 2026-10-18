@@ -27,6 +27,7 @@ mixin _$TourModel {
   DateTime? get startDate => throw _privateConstructorUsedError;
   DateTime? get endDate => throw _privateConstructorUsedError;
   String get guideId => throw _privateConstructorUsedError;
+  List<String> get guestGuideIds => throw _privateConstructorUsedError;
   List<String> get participantIds => throw _privateConstructorUsedError;
   List<String> get invitedUserIds => throw _privateConstructorUsedError;
   List<String> get pendingRequestUserIds => throw _privateConstructorUsedError;
@@ -57,6 +58,7 @@ abstract class $TourModelCopyWith<$Res> {
     DateTime? startDate,
     DateTime? endDate,
     String guideId,
+    List<String> guestGuideIds,
     List<String> participantIds,
     List<String> invitedUserIds,
     List<String> pendingRequestUserIds,
@@ -88,6 +90,7 @@ class _$TourModelCopyWithImpl<$Res, $Val extends TourModel>
     Object? startDate = freezed,
     Object? endDate = freezed,
     Object? guideId = null,
+    Object? guestGuideIds = null,
     Object? participantIds = null,
     Object? invitedUserIds = null,
     Object? pendingRequestUserIds = null,
@@ -122,6 +125,10 @@ class _$TourModelCopyWithImpl<$Res, $Val extends TourModel>
                 ? _value.guideId
                 : guideId // ignore: cast_nullable_to_non_nullable
                       as String,
+            guestGuideIds: null == guestGuideIds
+                ? _value.guestGuideIds
+                : guestGuideIds // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             participantIds: null == participantIds
                 ? _value.participantIds
                 : participantIds // ignore: cast_nullable_to_non_nullable
@@ -172,6 +179,7 @@ abstract class _$$TourModelImplCopyWith<$Res>
     DateTime? startDate,
     DateTime? endDate,
     String guideId,
+    List<String> guestGuideIds,
     List<String> participantIds,
     List<String> invitedUserIds,
     List<String> pendingRequestUserIds,
@@ -202,6 +210,7 @@ class __$$TourModelImplCopyWithImpl<$Res>
     Object? startDate = freezed,
     Object? endDate = freezed,
     Object? guideId = null,
+    Object? guestGuideIds = null,
     Object? participantIds = null,
     Object? invitedUserIds = null,
     Object? pendingRequestUserIds = null,
@@ -236,6 +245,10 @@ class __$$TourModelImplCopyWithImpl<$Res>
             ? _value.guideId
             : guideId // ignore: cast_nullable_to_non_nullable
                   as String,
+        guestGuideIds: null == guestGuideIds
+            ? _value._guestGuideIds
+            : guestGuideIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         participantIds: null == participantIds
             ? _value._participantIds
             : participantIds // ignore: cast_nullable_to_non_nullable
@@ -279,6 +292,7 @@ class _$TourModelImpl extends _TourModel {
     this.startDate,
     this.endDate,
     required this.guideId,
+    final List<String> guestGuideIds = const [],
     final List<String> participantIds = const [],
     final List<String> invitedUserIds = const [],
     final List<String> pendingRequestUserIds = const [],
@@ -286,7 +300,8 @@ class _$TourModelImpl extends _TourModel {
     this.isPublic = true,
     this.requireJoinApproval = false,
     this.createdAt,
-  }) : _participantIds = participantIds,
+  }) : _guestGuideIds = guestGuideIds,
+       _participantIds = participantIds,
        _invitedUserIds = invitedUserIds,
        _pendingRequestUserIds = pendingRequestUserIds,
        super._();
@@ -307,6 +322,15 @@ class _$TourModelImpl extends _TourModel {
   final DateTime? endDate;
   @override
   final String guideId;
+  final List<String> _guestGuideIds;
+  @override
+  @JsonKey()
+  List<String> get guestGuideIds {
+    if (_guestGuideIds is EqualUnmodifiableListView) return _guestGuideIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_guestGuideIds);
+  }
+
   final List<String> _participantIds;
   @override
   @JsonKey()
@@ -349,7 +373,7 @@ class _$TourModelImpl extends _TourModel {
 
   @override
   String toString() {
-    return 'TourModel(tourId: $tourId, name: $name, description: $description, startDate: $startDate, endDate: $endDate, guideId: $guideId, participantIds: $participantIds, invitedUserIds: $invitedUserIds, pendingRequestUserIds: $pendingRequestUserIds, status: $status, isPublic: $isPublic, requireJoinApproval: $requireJoinApproval, createdAt: $createdAt)';
+    return 'TourModel(tourId: $tourId, name: $name, description: $description, startDate: $startDate, endDate: $endDate, guideId: $guideId, guestGuideIds: $guestGuideIds, participantIds: $participantIds, invitedUserIds: $invitedUserIds, pendingRequestUserIds: $pendingRequestUserIds, status: $status, isPublic: $isPublic, requireJoinApproval: $requireJoinApproval, createdAt: $createdAt)';
   }
 
   @override
@@ -365,6 +389,10 @@ class _$TourModelImpl extends _TourModel {
                 other.startDate == startDate) &&
             (identical(other.endDate, endDate) || other.endDate == endDate) &&
             (identical(other.guideId, guideId) || other.guideId == guideId) &&
+            const DeepCollectionEquality().equals(
+              other._guestGuideIds,
+              _guestGuideIds,
+            ) &&
             const DeepCollectionEquality().equals(
               other._participantIds,
               _participantIds,
@@ -396,6 +424,7 @@ class _$TourModelImpl extends _TourModel {
     startDate,
     endDate,
     guideId,
+    const DeepCollectionEquality().hash(_guestGuideIds),
     const DeepCollectionEquality().hash(_participantIds),
     const DeepCollectionEquality().hash(_invitedUserIds),
     const DeepCollectionEquality().hash(_pendingRequestUserIds),
@@ -427,6 +456,7 @@ abstract class _TourModel extends TourModel {
     final DateTime? startDate,
     final DateTime? endDate,
     required final String guideId,
+    final List<String> guestGuideIds,
     final List<String> participantIds,
     final List<String> invitedUserIds,
     final List<String> pendingRequestUserIds,
@@ -452,6 +482,8 @@ abstract class _TourModel extends TourModel {
   DateTime? get endDate;
   @override
   String get guideId;
+  @override
+  List<String> get guestGuideIds;
   @override
   List<String> get participantIds;
   @override

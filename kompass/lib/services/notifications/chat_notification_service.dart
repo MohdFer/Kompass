@@ -40,7 +40,10 @@ class ChatNotificationService {
   final Set<String> _seenMessageIds = {};
   final Set<String> _seenAlertIds = {};
   final Set<String> _seenAnnouncementIds = {};
-  DateTime _sessionStartTime = DateTime.now();
+
+  bool hasSeenMessage(String messageId) => _seenMessageIds.contains(messageId);
+  bool hasSeenAlert(String alertId) => _seenAlertIds.contains(alertId);
+  bool hasSeenAnnouncement(String announcementId) => _seenAnnouncementIds.contains(announcementId);
 
   String? _currentUserId;
 
@@ -61,11 +64,12 @@ class ChatNotificationService {
       _seenMessageIds.clear();
       _seenAlertIds.clear();
       _seenAnnouncementIds.clear();
-      _sessionStartTime = DateTime.now();
     }
 
     final myTours = allTours.where((t) {
-      return t.guideId == userId || t.participantIds.contains(userId);
+      return t.guideId == userId ||
+          t.guestGuideIds.contains(userId) ||
+          t.participantIds.contains(userId);
     }).toList();
 
     final activeTourIds = myTours.map((t) => t.tourId).toSet();
@@ -113,42 +117,42 @@ class ChatNotificationService {
   }
 
   void _listenToTourMessages(TourModel tour) {
+    bool isInitialSnapshot = true;
+
     final sub = _firestore
         .collection('Tours')
         .doc(tour.tourId)
         .collection('Messages')
         .orderBy('timestamp', descending: true)
-        .limit(5)
+        .limit(10)
         .snapshots()
         .listen(
       (snapshot) {
+        if (isInitialSnapshot) {
+          for (final doc in snapshot.docs) {
+            _seenMessageIds.add(doc.id);
+          }
+          isInitialSnapshot = false;
+          return;
+        }
+
         for (final change in snapshot.docChanges) {
           if (change.type == DocumentChangeType.added) {
             final doc = change.doc;
             final message = MessageModel.fromFirestore(doc);
 
-            // Skip own messages
-            if (message.senderId == _currentUserId) continue;
-
             // Skip messages already processed
             if (_seenMessageIds.contains(message.messageId)) continue;
             _seenMessageIds.add(message.messageId);
 
-            // Skip historical messages created before current app session
-            if (message.timestamp != null &&
-                message.timestamp!.isBefore(
-                  _sessionStartTime.subtract(const Duration(seconds: 10)),
-                )) {
-                continue;
-            }
+            // Skip own messages
+            if (message.senderId == _currentUserId) continue;
 
-            // If the user is currently viewing this exact chat, skip notification alerts
-            if (_activeChatTourId == tour.tourId) continue;
-
-            // 1. Post real Android system notification alert
             final sender = message.senderName.isNotEmpty
                 ? message.senderName
                 : 'Expedition Crew';
+
+            // 1. Always post real system notification alert
             NotificationService.instance.showNotification(
               id: message.messageId.hashCode,
               title: '💬 $sender (${tour.name})',
@@ -161,10 +165,12 @@ class ChatNotificationService {
               HapticFeedback.mediumImpact();
             } catch (_) {}
 
-            // 3. Show in-app high contrast notification banner
-            AppToast.showInfo(
-              '💬 $sender: ${message.message}',
-            );
+            // 3. Show in-app notification banner if not actively inside this chat screen
+            if (_activeChatTourId != tour.tourId) {
+              AppToast.showInfo(
+                '💬 $sender (${tour.name}): ${message.message}',
+              );
+            }
           }
         }
       },
@@ -177,6 +183,8 @@ class ChatNotificationService {
   }
 
   void _listenToTourSOS(TourModel tour) {
+    bool isInitialSnapshot = true;
+
     final sub = _firestore
         .collection('Tours')
         .doc(tour.tourId)
@@ -185,26 +193,38 @@ class ChatNotificationService {
         .snapshots()
         .listen(
       (snapshot) {
+        if (isInitialSnapshot) {
+          for (final doc in snapshot.docs) {
+            _seenAlertIds.add(doc.id);
+          }
+          isInitialSnapshot = false;
+          return;
+        }
+
         for (final change in snapshot.docChanges) {
           if (change.type == DocumentChangeType.added) {
             final doc = change.doc;
             final alert = SosAlertModel.fromFirestore(doc);
 
-            if (alert.userId == _currentUserId) continue;
             if (_seenAlertIds.contains(alert.alertId)) continue;
             _seenAlertIds.add(alert.alertId);
+
+            if (alert.userId == _currentUserId) continue;
 
             final hasCoords = alert.latitude != 0.0 || alert.longitude != 0.0;
             final coordsText = hasCoords
                 ? 'GPS: ${alert.latitude.toStringAsFixed(4)}, ${alert.longitude.toStringAsFixed(4)}'
                 : 'GPS: Pending fix';
-            final reason = alert.message.isNotEmpty ? alert.message : 'Emergency distress signal';
+            final reason = alert.message.isNotEmpty
+                ? alert.message
+                : 'Emergency distress signal';
 
             // Post emergency system notification with relevant details to guide & participants
             NotificationService.instance.showNotification(
               id: alert.alertId.hashCode,
               title: '🚨 EMERGENCY SOS: ${alert.userName}',
-              body: '$reason in "${tour.name}"! $coordsText. Tap for emergency response.',
+              body:
+                  '$reason in "${tour.name}"! $coordsText. Tap for emergency response.',
               payload: 'sos:${tour.tourId}',
             );
 
@@ -229,34 +249,38 @@ class ChatNotificationService {
   }
 
   void _listenToTourAnnouncements(TourModel tour) {
+    bool isInitialSnapshot = true;
+
     final sub = _firestore
         .collection('Tours')
         .doc(tour.tourId)
         .collection('Announcements')
         .orderBy('timestamp', descending: true)
-        .limit(5)
+        .limit(10)
         .snapshots()
         .listen(
       (snapshot) {
+        if (isInitialSnapshot) {
+          for (final doc in snapshot.docs) {
+            _seenAnnouncementIds.add(doc.id);
+          }
+          isInitialSnapshot = false;
+          return;
+        }
+
         for (final change in snapshot.docChanges) {
           if (change.type == DocumentChangeType.added) {
             final doc = change.doc;
             final announcement = AnnouncementModel.fromFirestore(doc);
 
-            // Skip own announcements
-            if (announcement.createdBy == _currentUserId) continue;
-
             // Skip announcements already processed
-            if (_seenAnnouncementIds.contains(announcement.announcementId)) continue;
-            _seenAnnouncementIds.add(announcement.announcementId);
-
-            // Skip historical announcements from before current session
-            if (announcement.timestamp != null &&
-                announcement.timestamp!.isBefore(
-                  _sessionStartTime.subtract(const Duration(seconds: 10)),
-                )) {
+            if (_seenAnnouncementIds.contains(announcement.announcementId)) {
               continue;
             }
+            _seenAnnouncementIds.add(announcement.announcementId);
+
+            // Skip own announcements (handled when posted)
+            if (announcement.createdBy == _currentUserId) continue;
 
             final sender = announcement.createdByName.isNotEmpty
                 ? announcement.createdByName
@@ -285,7 +309,9 @@ class ChatNotificationService {
         }
       },
       onError: (e) {
-        debugPrint('Error listening to announcements in tour ${tour.tourId}: $e');
+        debugPrint(
+          'Error listening to announcements in tour ${tour.tourId}: $e',
+        );
       },
     );
 
@@ -315,8 +341,13 @@ final chatNotificationCoordinatorProvider = Provider<void>((ref) {
   final currentUser = ref.watch(currentUserProvider).valueOrNull;
   final allTours = ref.watch(toursProvider).valueOrNull ?? [];
 
+  final userId = currentUser?.userId;
+  if (userId != null) {
+    NotificationService.instance.saveUserToken(userId);
+  }
+
   ChatNotificationService.instance.syncTourListeners(
-    userId: currentUser?.userId,
+    userId: userId,
     allTours: allTours,
   );
 });

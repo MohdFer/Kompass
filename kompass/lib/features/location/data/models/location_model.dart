@@ -14,6 +14,8 @@ abstract class LocationModel with _$LocationModel {
     required double longitude,
     DateTime? timestamp,
     @Default('') String userName,
+    @Default(true) bool visibleToEveryone,
+    @Default(<String>[]) List<String> visibleToUserIds,
   }) = _LocationModel;
 
   const LocationModel._();
@@ -25,10 +27,14 @@ abstract class LocationModel with _$LocationModel {
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final data = doc.data()!;
+    final rawVisibleTo = data['visibleToUserIds'] as List<dynamic>? ?? [];
+    final visibleToUserIds = rawVisibleTo.map((e) => e.toString()).toList();
     return LocationModel.fromJson({
       ...data,
       'locationId': doc.id,
       'timestamp': (data['timestamp'] as Timestamp?)?.toDate().toIso8601String(),
+      'visibleToEveryone': data['visibleToEveryone'] as bool? ?? true,
+      'visibleToUserIds': visibleToUserIds,
     });
   }
 
@@ -36,6 +42,8 @@ abstract class LocationModel with _$LocationModel {
     final json = toJson();
     json.remove('locationId');
     json['timestamp'] = FieldValue.serverTimestamp();
+    json['visibleToEveryone'] = visibleToEveryone;
+    json['visibleToUserIds'] = visibleToUserIds;
     return json;
   }
 }

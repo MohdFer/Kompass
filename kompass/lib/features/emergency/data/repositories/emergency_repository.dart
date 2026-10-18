@@ -15,9 +15,10 @@ class EmergencyRepository {
           .collection('SOSAlerts');
 
   /// Trigger an SOS alert.
-  Future<void> triggerSOS(String tourId, SosAlertModel alert) async {
+  Future<String> triggerSOS(String tourId, SosAlertModel alert) async {
     try {
-      await _alertsRef(tourId).add(alert.toFirestore());
+      final docRef = await _alertsRef(tourId).add(alert.toFirestore());
+      return docRef.id;
     } catch (e) {
       throw DatabaseException('Failed to trigger SOS: $e');
     }
@@ -35,22 +36,32 @@ class EmergencyRepository {
     }
   }
 
-  /// Watch active SOS alerts for a tour.
+  /// Watch active SOS alerts for a tour (sorted newest-first in memory to avoid composite index requirements).
   Stream<List<SosAlertModel>> watchActiveAlerts(String tourId) {
     return _alertsRef(tourId)
         .where('status', isEqualTo: 'active')
-        .orderBy('timestamp', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(SosAlertModel.fromFirestore).toList());
+        .map((snapshot) {
+      final alerts = snapshot.docs.map(SosAlertModel.fromFirestore).toList();
+      alerts.sort((a, b) {
+        final tA = a.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final tB = b.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return tB.compareTo(tA);
+      });
+      return alerts;
+    });
   }
 
   /// Watch all SOS alerts for a tour (active and resolved).
   Stream<List<SosAlertModel>> watchAllAlerts(String tourId) {
-    return _alertsRef(tourId)
-        .orderBy('timestamp', descending: true)
-        .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map(SosAlertModel.fromFirestore).toList());
+    return _alertsRef(tourId).snapshots().map((snapshot) {
+      final alerts = snapshot.docs.map(SosAlertModel.fromFirestore).toList();
+      alerts.sort((a, b) {
+        final tA = a.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final tB = b.timestamp ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return tB.compareTo(tA);
+      });
+      return alerts;
+    });
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -8,7 +9,9 @@ import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_empty_state.dart';
 import '../../../../core/widgets/kompass_loading.dart';
 import '../../../../services/notifications/chat_notification_service.dart';
+import '../../../../services/notifications/fcm_direct_dispatcher.dart';
 import '../../../auth/providers/auth_providers.dart';
+import '../../../tour/providers/tour_providers.dart';
 import '../../data/models/message_model.dart';
 import '../../providers/messaging_providers.dart';
 
@@ -54,12 +57,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     _controller.clear();
     try {
-      await ref.read(messageRepositoryProvider).sendMessage(widget.tourId, message);
+      final messageId = await ref.read(messageRepositoryProvider).sendMessage(widget.tourId, message);
+
+      // Dispatch direct background push notification to all tour members
+      final tour = ref.read(tourDetailProvider(widget.tourId)).valueOrNull;
+      unawaited(
+        FcmDirectDispatcher.instance.sendChatMessage(
+          tourId: widget.tourId,
+          tourName: tour?.name ?? 'Expedition',
+          senderName: user?.name ?? 'Explorer',
+          messageText: text,
+          senderId: authUser.uid,
+          messageId: messageId,
+        ).catchError((err) {
+          debugPrint('FCM direct send chat error: $err');
+        }),
+      );
     } catch (e) {
       if (mounted) {
         AppToast.showError('Failed to send message: $e', context: context);
       }
     }
+  }
+
+  Future<void> _onRefresh() async {
+    ref.invalidate(tourMessagesProvider(widget.tourId));
+    await Future<void>.delayed(const Duration(milliseconds: 400));
   }
 
   @override
@@ -74,25 +97,48 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
-                if (messages.isEmpty) {
-                  return const KompassEmptyState(
-                    title: 'No messages yet',
-                    message: 'Be the first to say ahoy!',
-                    icon: Icons.chat_bubble_outline,
-                  );
-                }
-                return ListView.builder(
-                  reverse: true,
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[messages.length - 1 - index];
-                    final isMe = message.senderId == currentUserId;
-                    return _MessageBubble(message: message, isMe: isMe);
-                  },
+                return RefreshIndicator(
+                  color: AppColors.primaryGold,
+                  backgroundColor: AppColors.surface,
+                  onRefresh: _onRefresh,
+                  child: messages.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 160),
+                            KompassEmptyState(
+                              title: 'No messages yet',
+                              message: 'Be the first to say ahoy!',
+                              icon: Icons.chat_bubble_outline,
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          reverse: true,
+                          itemCount: messages.length,
+                          itemBuilder: (context, index) {
+                            final message =
+                                messages[messages.length - 1 - index];
+                            final isMe = message.senderId == currentUserId;
+                            return _MessageBubble(message: message, isMe: isMe);
+                          },
+                        ),
                 );
               },
               loading: () => const Center(child: KompassLoading()),
-              error: (e, st) => Center(child: Text('Error: $e')),
+              error: (e, st) => RefreshIndicator(
+                color: AppColors.primaryGold,
+                backgroundColor: AppColors.surface,
+                onRefresh: _onRefresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    const SizedBox(height: 160),
+                    Center(child: Text('Error: $e')),
+                  ],
+                ),
+              ),
             ),
           ),
           SafeArea(

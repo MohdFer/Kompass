@@ -6,6 +6,7 @@ import 'features/location/providers/location_providers.dart';
 import 'routing/app_router.dart';
 import 'services/notifications/chat_notification_service.dart';
 import 'services/notifications/notification_service.dart';
+import 'services/permissions/app_permission_service.dart';
 
 /// Root widget for the KOMPASS application.
 class KompassApp extends ConsumerStatefulWidget {
@@ -19,6 +20,12 @@ class _KompassAppState extends ConsumerState<KompassApp> {
   @override
   void initState() {
     super.initState();
+
+    // Prompt for essential system permissions immediately on initial launch
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppPermissionService.instance.requestInitialPermissionsPrompt();
+    });
+
     NotificationService.instance.onNotificationTapCallback = (payload) {
       try {
         if (payload.startsWith('announcement:')) {

@@ -339,6 +339,7 @@ mixin _$ActivityItem {
   String get locationName => throw _privateConstructorUsedError;
   double? get latitude => throw _privateConstructorUsedError;
   double? get longitude => throw _privateConstructorUsedError;
+  bool get isCompleted => throw _privateConstructorUsedError;
 
   /// Serializes this ActivityItem to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -365,6 +366,7 @@ abstract class $ActivityItemCopyWith<$Res> {
     String locationName,
     double? latitude,
     double? longitude,
+    bool isCompleted,
   });
 }
 
@@ -390,6 +392,7 @@ class _$ActivityItemCopyWithImpl<$Res, $Val extends ActivityItem>
     Object? locationName = null,
     Object? latitude = freezed,
     Object? longitude = freezed,
+    Object? isCompleted = null,
   }) {
     return _then(
       _value.copyWith(
@@ -421,6 +424,10 @@ class _$ActivityItemCopyWithImpl<$Res, $Val extends ActivityItem>
                 ? _value.longitude
                 : longitude // ignore: cast_nullable_to_non_nullable
                       as double?,
+            isCompleted: null == isCompleted
+                ? _value.isCompleted
+                : isCompleted // ignore: cast_nullable_to_non_nullable
+                      as bool,
           )
           as $Val,
     );
@@ -444,6 +451,7 @@ abstract class _$$ActivityItemImplCopyWith<$Res>
     String locationName,
     double? latitude,
     double? longitude,
+    bool isCompleted,
   });
 }
 
@@ -468,6 +476,7 @@ class __$$ActivityItemImplCopyWithImpl<$Res>
     Object? locationName = null,
     Object? latitude = freezed,
     Object? longitude = freezed,
+    Object? isCompleted = null,
   }) {
     return _then(
       _$ActivityItemImpl(
@@ -499,6 +508,10 @@ class __$$ActivityItemImplCopyWithImpl<$Res>
             ? _value.longitude
             : longitude // ignore: cast_nullable_to_non_nullable
                   as double?,
+        isCompleted: null == isCompleted
+            ? _value.isCompleted
+            : isCompleted // ignore: cast_nullable_to_non_nullable
+                  as bool,
       ),
     );
   }
@@ -515,6 +528,7 @@ class _$ActivityItemImpl implements _ActivityItem {
     this.locationName = '',
     this.latitude,
     this.longitude,
+    this.isCompleted = false,
   });
 
   factory _$ActivityItemImpl.fromJson(Map<String, dynamic> json) =>
@@ -536,10 +550,13 @@ class _$ActivityItemImpl implements _ActivityItem {
   final double? latitude;
   @override
   final double? longitude;
+  @override
+  @JsonKey()
+  final bool isCompleted;
 
   @override
   String toString() {
-    return 'ActivityItem(name: $name, description: $description, startTime: $startTime, endTime: $endTime, locationName: $locationName, latitude: $latitude, longitude: $longitude)';
+    return 'ActivityItem(name: $name, description: $description, startTime: $startTime, endTime: $endTime, locationName: $locationName, latitude: $latitude, longitude: $longitude, isCompleted: $isCompleted)';
   }
 
   @override
@@ -558,7 +575,9 @@ class _$ActivityItemImpl implements _ActivityItem {
             (identical(other.latitude, latitude) ||
                 other.latitude == latitude) &&
             (identical(other.longitude, longitude) ||
-                other.longitude == longitude));
+                other.longitude == longitude) &&
+            (identical(other.isCompleted, isCompleted) ||
+                other.isCompleted == isCompleted));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -572,6 +591,7 @@ class _$ActivityItemImpl implements _ActivityItem {
     locationName,
     latitude,
     longitude,
+    isCompleted,
   );
 
   /// Create a copy of ActivityItem
@@ -597,6 +617,7 @@ abstract class _ActivityItem implements ActivityItem {
     final String locationName,
     final double? latitude,
     final double? longitude,
+    final bool isCompleted,
   }) = _$ActivityItemImpl;
 
   factory _ActivityItem.fromJson(Map<String, dynamic> json) =
@@ -616,6 +637,8 @@ abstract class _ActivityItem implements ActivityItem {
   double? get latitude;
   @override
   double? get longitude;
+  @override
+  bool get isCompleted;
 
   /// Create a copy of ActivityItem
   /// with the given fields replaced by the non-null parameter values.

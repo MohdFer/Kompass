@@ -15,6 +15,7 @@ abstract class TourModel with _$TourModel {
     DateTime? startDate,
     DateTime? endDate,
     required String guideId,
+    @Default([]) List<String> guestGuideIds,
     @Default([]) List<String> participantIds,
     @Default([]) List<String> invitedUserIds,
     @Default([]) List<String> pendingRequestUserIds,
@@ -55,4 +56,14 @@ abstract class TourModel with _$TourModel {
   bool get isActive => tourStatus == TourStatus.active;
   bool get isCompleted => tourStatus == TourStatus.completed;
   int get participantCount => participantIds.length;
+
+  /// Returns true if [userId] is the primary creator/guide of this tour.
+  bool isPrimaryGuide(String userId) => guideId == userId;
+
+  /// Returns true if [userId] has been promoted to a Guest Guide for this tour.
+  bool isGuestGuide(String userId) => guestGuideIds.contains(userId);
+
+  /// Returns true if [userId] is either the primary Tour Guide or a Guest Guide.
+  bool canManageTour(String userId) =>
+      guideId == userId || guestGuideIds.contains(userId);
 }

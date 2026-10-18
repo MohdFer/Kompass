@@ -1,7 +1,8 @@
 /// Enum for attendance check-in methods.
 enum AttendanceMethod {
   qr('QR'),
-  manual('Manual');
+  manual('Manual'),
+  code('Code');
 
   const AttendanceMethod(this.label);
   final String label;

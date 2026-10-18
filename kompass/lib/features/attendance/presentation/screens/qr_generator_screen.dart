@@ -14,6 +14,11 @@ class QRGeneratorScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userAsync = ref.watch(currentUserProvider);
 
+    Future<void> onRefresh() async {
+      ref.invalidate(currentUserProvider);
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+
     return Scaffold(
       appBar: const KompassAppBar(title: 'Your Crew Badge'),
       body: userAsync.when(
@@ -25,51 +30,78 @@ class QRGeneratorScreen extends ConsumerWidget {
           // Generate QR data format: "userId|tourId"
           final qrData = '${user.userId}|$tourId';
 
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+          return RefreshIndicator(
+            color: AppColors.primaryGold,
+            backgroundColor: AppColors.surface,
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 64),
               children: [
-                Text(
-                  'Show this to your Guide',
-                  style: AppTextStyles.headlineMedium.copyWith(color: AppColors.primaryGoldDark),
-                ),
-                const SizedBox(height: 32),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.cardShadow,
-                        blurRadius: 10,
-                        offset: Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: QrImageView(
-                    data: qrData,
-                    version: QrVersions.auto,
-                    size: 250.0,
-                    backgroundColor: Colors.white,
+                Center(
+                  child: Text(
+                    'Show this to your Guide',
+                    style: AppTextStyles.headlineMedium
+                        .copyWith(color: AppColors.primaryGoldDark),
                   ),
                 ),
                 const SizedBox(height: 32),
-                Text(
-                  user.name,
-                  style: AppTextStyles.headlineLarge,
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.cardShadow,
+                          blurRadius: 10,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: QrImageView(
+                      data: qrData,
+                      version: QrVersions.auto,
+                      size: 250.0,
+                      backgroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Center(
+                  child: Text(
+                    user.name,
+                    style: AppTextStyles.headlineLarge,
+                  ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Ready for Roll Call',
-                  style: AppTextStyles.bodyLarge.copyWith(color: AppColors.textHint),
+                Center(
+                  child: Text(
+                    'Ready for Roll Call',
+                    style: AppTextStyles.bodyLarge
+                        .copyWith(color: AppColors.textHint),
+                  ),
                 ),
               ],
             ),
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primaryGold)),
-        error: (e, st) => Center(child: Text('Error: $e')),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primaryGold),
+        ),
+        error: (e, st) => RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surface,
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 160),
+              Center(child: Text('Error: $e')),
+            ],
+          ),
+        ),
       ),
     );
   }

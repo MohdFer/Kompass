@@ -1,9 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/attendance_model.dart';
+import '../data/models/roll_call_session_model.dart';
 import '../data/repositories/attendance_repository.dart';
 
 final attendanceRepositoryProvider = Provider<AttendanceRepository>((ref) {
   return AttendanceRepository();
+});
+
+final activeRollCallSessionProvider =
+    StreamProvider.family<RollCallSessionModel?, String>((ref, tourId) {
+  return ref.watch(attendanceRepositoryProvider).watchActiveRollCallSession(tourId);
 });
 
 final tourAttendanceProvider =
@@ -69,6 +75,64 @@ class AttendanceController extends StateNotifier<AsyncValue<void>> {
       await ref
           .read(attendanceRepositoryProvider)
           .deleteAttendanceRecord(tourId, attendanceId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<RollCallSessionModel> createRollCallSession({
+    required String tourId,
+    required String guideId,
+    String? guideName,
+    int durationMinutes = 5,
+  }) async {
+    try {
+      state = const AsyncValue.loading();
+      final session = await ref
+          .read(attendanceRepositoryProvider)
+          .createRollCallSession(
+            tourId: tourId,
+            guideId: guideId,
+            guideName: guideName,
+            durationMinutes: durationMinutes,
+          );
+      state = const AsyncValue.data(null);
+      return session;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> endRollCallSession(String tourId) async {
+    try {
+      state = const AsyncValue.loading();
+      await ref.read(attendanceRepositoryProvider).endRollCallSession(tourId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> verifyCodeAndCheckIn({
+    required String tourId,
+    required String userId,
+    required String enteredCode,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      state = const AsyncValue.loading();
+      await ref.read(attendanceRepositoryProvider).verifyCodeAndCheckIn(
+            tourId: tourId,
+            userId: userId,
+            enteredCode: enteredCode,
+            latitude: latitude,
+            longitude: longitude,
+          );
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);

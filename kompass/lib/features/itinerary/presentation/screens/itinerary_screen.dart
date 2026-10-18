@@ -7,6 +7,8 @@ import '../../../../core/utils/app_toast.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_empty_state.dart';
 import '../../../../core/widgets/kompass_loading.dart';
+import '../../../auth/providers/auth_providers.dart';
+import '../../../tour/providers/tour_providers.dart';
 import '../../data/models/itinerary_model.dart';
 import '../../providers/itinerary_providers.dart';
 
@@ -17,41 +19,91 @@ class ItineraryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final itinerariesAsync = ref.watch(tourItinerariesProvider(tourId));
+    final currentUser = ref.watch(currentUserProvider).valueOrNull;
+    final tour = ref.watch(tourDetailProvider(tourId)).valueOrNull;
+
+    final canManageItinerary = currentUser != null &&
+        tour != null &&
+        tour.canManageTour(currentUser.userId);
+
+    Future<void> onRefresh() async {
+      ref.invalidate(tourItinerariesProvider(tourId));
+      ref.invalidate(tourDetailProvider(tourId));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
 
     return Scaffold(
       appBar: const KompassAppBar(title: 'Itinerary & Checkpoints'),
       body: itinerariesAsync.when(
         data: (itineraries) {
-          if (itineraries.isEmpty) {
-            return const KompassEmptyState(
-              message: 'No itinerary days planned yet. Tap + to add a day!',
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: itineraries.length,
-            itemBuilder: (context, index) {
-              final item = itineraries[index];
-              return _buildItineraryCard(context, ref, item);
-            },
+          return RefreshIndicator(
+            color: AppColors.primaryGold,
+            backgroundColor: AppColors.surface,
+            onRefresh: onRefresh,
+            child: itineraries.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      const SizedBox(height: 160),
+                      KompassEmptyState(
+                        message: canManageItinerary
+                            ? 'No itinerary days planned yet. Tap + to add a day!'
+                            : 'No itinerary days have been published by the Tour Guide yet.',
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: itineraries.length,
+                    itemBuilder: (context, index) {
+                      final item = itineraries[index];
+                      return _buildItineraryCard(
+                        context,
+                        ref,
+                        item,
+                        canManage: canManageItinerary,
+                      );
+                    },
+                  ),
           );
         },
         loading: () => const KompassLoading(),
-        error: (error, stack) => Center(child: Text('Error: $error')),
+        error: (error, stack) => RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surface,
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 160),
+              Center(child: Text('Error: $error')),
+            ],
+          ),
+        ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddItineraryDialog(context, ref),
-        icon: const Icon(Icons.add),
-        label: const Text('Add Day'),
-      ),
+      floatingActionButton: canManageItinerary
+          ? FloatingActionButton.extended(
+              onPressed: () => _showAddItineraryDialog(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('Add Day'),
+            )
+          : null,
     );
   }
 
   Widget _buildItineraryCard(
     BuildContext context,
     WidgetRef ref,
-    ItineraryModel item,
-  ) {
+    ItineraryModel item, {
+    required bool canManage,
+  }) {
+    final totalActivities = item.activities.length;
+    final completedActivities =
+        item.activities.where((a) => a.isCompleted).length;
+    final progressFraction =
+        totalActivities > 0 ? completedActivities / totalActivities : 0.0;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       child: Padding(
@@ -65,20 +117,21 @@ class ItineraryScreen extends ConsumerWidget {
                 Expanded(
                   child: Text(item.title, style: AppTextStyles.headlineLarge),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                  tooltip: 'Delete Day',
-                  onPressed: () async {
-                    try {
-                      await ref
-                          .read(itineraryControllerProvider.notifier)
-                          .deleteItinerary(tourId, item.itineraryId);
-                      AppToast.showSuccess('Itinerary day "${item.title}" deleted.');
-                    } catch (e) {
-                      AppToast.showError('Failed to delete itinerary day: $e');
-                    }
-                  },
-                ),
+                if (canManage)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
+                    tooltip: 'Delete Day',
+                    onPressed: () async {
+                      try {
+                        await ref
+                            .read(itineraryControllerProvider.notifier)
+                            .deleteItinerary(tourId, item.itineraryId);
+                        AppToast.showSuccess('Itinerary day "${item.title}" deleted.');
+                      } catch (e) {
+                        AppToast.showError('Failed to delete itinerary day: $e');
+                      }
+                    },
+                  ),
               ],
             ),
             Text(
@@ -94,13 +147,47 @@ class ItineraryScreen extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Activities & Checkpoints', style: AppTextStyles.labelLarge),
-                TextButton.icon(
-                  onPressed: () => _showAddActivityDialog(context, ref, item),
-                  icon: const Icon(Icons.add_location_alt, size: 18),
-                  label: const Text('Add Checkpoint'),
-                ),
+                if (canManage)
+                  TextButton.icon(
+                    onPressed: () => _showAddActivityDialog(context, ref, item),
+                    icon: const Icon(Icons.add_location_alt, size: 18),
+                    label: const Text('Add Checkpoint'),
+                  ),
               ],
             ),
+            if (totalActivities > 0) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progressFraction,
+                        minHeight: 6,
+                        backgroundColor: AppColors.surfaceVariant,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          completedActivities == totalActivities
+                              ? AppColors.success
+                              : AppColors.primaryGold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '$completedActivities/$totalActivities Completed',
+                    style: AppTextStyles.labelSmall.copyWith(
+                      color: completedActivities == totalActivities
+                          ? AppColors.success
+                          : AppColors.primaryGold,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
             if (item.activities.isEmpty)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -113,42 +200,247 @@ class ItineraryScreen extends ConsumerWidget {
               ...item.activities.asMap().entries.map((entry) {
                 final idx = entry.key;
                 final activity = entry.value;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.surfaceVariant,
-                    child: Icon(Icons.place, size: 18, color: AppColors.primaryGold),
-                  ),
-                  title: Text(activity.name, style: AppTextStyles.labelLarge),
-                  subtitle: Text(
-                    '${activity.startTime} - ${activity.endTime}'
-                    '${activity.locationName.isNotEmpty ? ' • Meeting Point: ${activity.locationName}' : ''}'
-                    '${activity.description.isNotEmpty ? '\n${activity.description}' : ''}',
-                  ),
-                  isThreeLine: true,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.close, size: 18),
-                    tooltip: 'Remove checkpoint',
-                    onPressed: () async {
-                      try {
-                        final updatedList = List<ActivityItem>.from(item.activities)
-                          ..removeAt(idx);
-                        await ref
-                            .read(itineraryControllerProvider.notifier)
-                            .updateItinerary(
-                              tourId,
-                              item.copyWith(activities: updatedList),
-                            );
-                        AppToast.showInfo('Checkpoint "${activity.name}" removed.');
-                      } catch (e) {
-                        AppToast.showError('Failed to remove checkpoint: $e');
-                      }
-                    },
-                  ),
+                return _buildCheckpointItem(
+                  context: context,
+                  ref: ref,
+                  item: item,
+                  activity: activity,
+                  idx: idx,
+                  canManage: canManage,
                 );
               }),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCheckpointItem({
+    required BuildContext context,
+    required WidgetRef ref,
+    required ItineraryModel item,
+    required ActivityItem activity,
+    required int idx,
+    required bool canManage,
+  }) {
+    Future<void> toggleCompletion() async {
+      if (!canManage) {
+        AppToast.showInfo('Checkpoint status is managed live by your Tour Guide.');
+        return;
+      }
+      final isNowCompleted = !activity.isCompleted;
+      final updatedList = List<ActivityItem>.from(item.activities);
+      updatedList[idx] = activity.copyWith(isCompleted: isNowCompleted);
+      try {
+        await ref.read(itineraryControllerProvider.notifier).updateItinerary(
+              tourId,
+              item.copyWith(activities: updatedList),
+            );
+        if (isNowCompleted) {
+          AppToast.showSuccess('Checkpoint "${activity.name}" completed!');
+        } else {
+          AppToast.showInfo('Checkpoint "${activity.name}" marked as pending.');
+        }
+      } catch (e) {
+        AppToast.showError('Failed to update checkpoint: $e');
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: activity.isCompleted
+            ? AppColors.surfaceVariant.withValues(alpha: 0.5)
+            : AppColors.surfaceVariant.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: activity.isCompleted
+              ? AppColors.primaryGold.withValues(alpha: 0.35)
+              : AppColors.border,
+          width: activity.isCompleted ? 1.4 : 1.0,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: toggleCompletion,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Checkbox / Checklist Box
+              Padding(
+                padding: const EdgeInsets.only(top: 2, right: 12),
+                child: GestureDetector(
+                  onTap: toggleCompletion,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: activity.isCompleted
+                          ? AppColors.primaryGold
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: activity.isCompleted
+                            ? AppColors.primaryGold
+                            : AppColors.textSecondary,
+                        width: 2,
+                      ),
+                    ),
+                    child: activity.isCompleted
+                        ? const Icon(
+                            Icons.check_rounded,
+                            size: 18,
+                            color: AppColors.background,
+                          )
+                        : null,
+                  ),
+                ),
+              ),
+
+              // Checkpoint Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            activity.name,
+                            style: AppTextStyles.labelLarge.copyWith(
+                              decoration: activity.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                              decorationColor: AppColors.primaryGold,
+                              decorationThickness: 2,
+                              color: activity.isCompleted
+                                  ? AppColors.textSecondary
+                                  : AppColors.textPrimary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (activity.isCompleted) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 7,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.success.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: AppColors.success.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.check_circle_outline,
+                                  size: 11,
+                                  color: AppColors.success,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'COMPLETED',
+                                  style: AppTextStyles.labelSmall.copyWith(
+                                    color: AppColors.success,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.schedule_rounded,
+                          size: 13,
+                          color: AppColors.primaryGold,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${activity.startTime} - ${activity.endTime}',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.primaryGold,
+                            fontSize: 12,
+                          ),
+                        ),
+                        if (activity.locationName.isNotEmpty) ...[
+                          const SizedBox(width: 10),
+                          const Icon(
+                            Icons.place_rounded,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 2),
+                          Expanded(
+                            child: Text(
+                              activity.locationName,
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (activity.description.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        activity.description,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // Delete button for tour guides
+              if (canManage)
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.close,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  tooltip: 'Remove checkpoint',
+                  onPressed: () async {
+                    try {
+                      final updatedList = List<ActivityItem>.from(item.activities)
+                        ..removeAt(idx);
+                      await ref
+                          .read(itineraryControllerProvider.notifier)
+                          .updateItinerary(
+                            tourId,
+                            item.copyWith(activities: updatedList),
+                          );
+                      AppToast.showInfo('Checkpoint "${activity.name}" removed.');
+                    } catch (e) {
+                      AppToast.showError('Failed to remove checkpoint: $e');
+                    }
+                  },
+                ),
+            ],
+          ),
         ),
       ),
     );

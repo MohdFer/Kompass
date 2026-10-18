@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_toast.dart';
+import '../../../../core/utils/file_viewer/file_viewer.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_empty_state.dart';
 import '../../../../core/widgets/kompass_loading.dart';
@@ -51,60 +52,84 @@ class DocumentListScreen extends ConsumerWidget {
     final docsAsync = ref.watch(tourDocumentsProvider(tourId));
     final uploadState = ref.watch(documentUploadControllerProvider);
 
+    Future<void> onRefresh() async {
+      ref.invalidate(tourDocumentsProvider(tourId));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+
     return Scaffold(
       appBar: const KompassAppBar(title: 'Scrolls & Documents'),
       body: docsAsync.when(
         data: (docs) {
-          if (docs.isEmpty) {
-            return const KompassEmptyState(
-              icon: Icons.folder_open,
-              message: 'No documents or scrolls uploaded yet.\nTap below to upload PDFs or images for this tour.',
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final doc = docs[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.surfaceVariant,
-                    child: Icon(
-                      doc.isPdf ? Icons.picture_as_pdf : Icons.insert_drive_file,
-                      color: doc.isPdf ? AppColors.error : AppColors.primaryGold,
-                    ),
+          return RefreshIndicator(
+            color: AppColors.primaryGold,
+            backgroundColor: AppColors.surface,
+            onRefresh: onRefresh,
+            child: docs.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 160),
+                      KompassEmptyState(
+                        icon: Icons.folder_open,
+                        message:
+                            'No documents or scrolls uploaded yet.\nTap below to upload PDFs or images for this tour.',
+                      ),
+                    ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final doc = docs[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: AppColors.surfaceVariant,
+                            child: Icon(
+                              doc.isPdf
+                                  ? Icons.picture_as_pdf
+                                  : Icons.insert_drive_file,
+                              color: doc.isPdf
+                                  ? AppColors.error
+                                  : AppColors.primaryGold,
+                            ),
+                          ),
+                          title: Text(doc.name, style: AppTextStyles.labelLarge),
+                          subtitle: Text(
+                            'Size: ${doc.formattedSize} • By: ${doc.uploadedBy}',
+                            style: AppTextStyles.bodySmall,
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: AppColors.error,
+                            ),
+                            tooltip: 'Delete document',
+                            onPressed: () => _confirmDelete(context, ref, doc),
+                          ),
+                          onTap: () => _openDocument(context, ref, doc),
+                        ),
+                      );
+                    },
                   ),
-                  title: Text(doc.name, style: AppTextStyles.labelLarge),
-                  subtitle: Text(
-                    'Size: ${doc.formattedSize} • By: ${doc.uploadedBy}',
-                    style: AppTextStyles.bodySmall,
-                  ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: AppColors.error),
-                    tooltip: 'Delete document',
-                    onPressed: () => _confirmDelete(context, ref, doc),
-                  ),
-                  onTap: () async {
-                    try {
-                      final uri = Uri.parse(doc.url);
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                      } else {
-                        AppToast.showError('Could not open document link.');
-                      }
-                    } catch (e) {
-                      AppToast.showError('Failed to open document: $e');
-                    }
-                  },
-                ),
-              );
-            },
           );
         },
         loading: () => const KompassLoading(),
-        error: (e, st) => Center(child: Text('Error: $e')),
+        error: (e, st) => RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surface,
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 160),
+              Center(child: Text('Error: $e')),
+            ],
+          ),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: uploadState.isLoading
@@ -134,5 +159,36 @@ class DocumentListScreen extends ConsumerWidget {
         label: Text(uploadState.isLoading ? 'Uploading...' : 'Upload Document'),
       ),
     );
+  }
+
+  Future<void> _openDocument(BuildContext context, WidgetRef ref, DocumentModel doc) async {
+    try {
+      if (doc.url.startsWith('firestore://')) {
+        AppToast.showInfo('Opening ${doc.name}...');
+        final bytes = await ref
+            .read(documentRepositoryProvider)
+            .getDocumentBytes(doc.tourId, doc.documentId);
+        final ext = doc.fileType.isNotEmpty
+            ? doc.fileType
+            : (doc.name.contains('.') ? doc.name.split('.').last : '');
+        final mimeType = ref
+            .read(documentRepositoryProvider)
+            .contentTypeForExtension(ext);
+        await openRawDocument(
+          fileName: doc.name,
+          bytes: bytes,
+          contentType: mimeType,
+        );
+      } else {
+        final uri = Uri.parse(doc.url);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } else {
+          AppToast.showError('Could not open document link.');
+        }
+      }
+    } catch (e) {
+      AppToast.showError('Failed to open document: $e');
+    }
   }
 }

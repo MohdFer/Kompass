@@ -15,9 +15,10 @@ class MessageRepository {
           .collection('Messages');
 
   /// Send a message to a tour's chat.
-  Future<void> sendMessage(String tourId, MessageModel message) async {
+  Future<String> sendMessage(String tourId, MessageModel message) async {
     try {
-      await _messagesRef(tourId).add(message.toFirestore());
+      final docRef = await _messagesRef(tourId).add(message.toFirestore());
+      return docRef.id;
     } catch (e) {
       throw DatabaseException('Failed to send message: $e');
     }

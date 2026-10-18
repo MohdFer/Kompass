@@ -28,6 +28,8 @@ mixin _$LocationModel {
   double get longitude => throw _privateConstructorUsedError;
   DateTime? get timestamp => throw _privateConstructorUsedError;
   String get userName => throw _privateConstructorUsedError;
+  bool get visibleToEveryone => throw _privateConstructorUsedError;
+  List<String> get visibleToUserIds => throw _privateConstructorUsedError;
 
   /// Serializes this LocationModel to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -54,6 +56,8 @@ abstract class $LocationModelCopyWith<$Res> {
     double longitude,
     DateTime? timestamp,
     String userName,
+    bool visibleToEveryone,
+    List<String> visibleToUserIds,
   });
 }
 
@@ -79,6 +83,8 @@ class _$LocationModelCopyWithImpl<$Res, $Val extends LocationModel>
     Object? longitude = null,
     Object? timestamp = freezed,
     Object? userName = null,
+    Object? visibleToEveryone = null,
+    Object? visibleToUserIds = null,
   }) {
     return _then(
       _value.copyWith(
@@ -110,6 +116,14 @@ class _$LocationModelCopyWithImpl<$Res, $Val extends LocationModel>
                 ? _value.userName
                 : userName // ignore: cast_nullable_to_non_nullable
                       as String,
+            visibleToEveryone: null == visibleToEveryone
+                ? _value.visibleToEveryone
+                : visibleToEveryone // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            visibleToUserIds: null == visibleToUserIds
+                ? _value.visibleToUserIds
+                : visibleToUserIds // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
           )
           as $Val,
     );
@@ -133,6 +147,8 @@ abstract class _$$LocationModelImplCopyWith<$Res>
     double longitude,
     DateTime? timestamp,
     String userName,
+    bool visibleToEveryone,
+    List<String> visibleToUserIds,
   });
 }
 
@@ -157,6 +173,8 @@ class __$$LocationModelImplCopyWithImpl<$Res>
     Object? longitude = null,
     Object? timestamp = freezed,
     Object? userName = null,
+    Object? visibleToEveryone = null,
+    Object? visibleToUserIds = null,
   }) {
     return _then(
       _$LocationModelImpl(
@@ -188,6 +206,14 @@ class __$$LocationModelImplCopyWithImpl<$Res>
             ? _value.userName
             : userName // ignore: cast_nullable_to_non_nullable
                   as String,
+        visibleToEveryone: null == visibleToEveryone
+            ? _value.visibleToEveryone
+            : visibleToEveryone // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        visibleToUserIds: null == visibleToUserIds
+            ? _value.visibleToUserIds
+            : visibleToUserIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
       ),
     );
   }
@@ -204,7 +230,10 @@ class _$LocationModelImpl extends _LocationModel {
     required this.longitude,
     this.timestamp,
     this.userName = '',
-  }) : super._();
+    this.visibleToEveryone = true,
+    final List<String> visibleToUserIds = const <String>[],
+  }) : _visibleToUserIds = visibleToUserIds,
+       super._();
 
   factory _$LocationModelImpl.fromJson(Map<String, dynamic> json) =>
       _$$LocationModelImplFromJson(json);
@@ -224,10 +253,21 @@ class _$LocationModelImpl extends _LocationModel {
   @override
   @JsonKey()
   final String userName;
+  @override
+  @JsonKey()
+  final bool visibleToEveryone;
+  final List<String> _visibleToUserIds;
+  @override
+  @JsonKey()
+  List<String> get visibleToUserIds {
+    if (_visibleToUserIds is EqualUnmodifiableListView) return _visibleToUserIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_visibleToUserIds);
+  }
 
   @override
   String toString() {
-    return 'LocationModel(locationId: $locationId, tourId: $tourId, userId: $userId, latitude: $latitude, longitude: $longitude, timestamp: $timestamp, userName: $userName)';
+    return 'LocationModel(locationId: $locationId, tourId: $tourId, userId: $userId, latitude: $latitude, longitude: $longitude, timestamp: $timestamp, userName: $userName, visibleToEveryone: $visibleToEveryone, visibleToUserIds: $visibleToUserIds)';
   }
 
   @override
@@ -246,7 +286,11 @@ class _$LocationModelImpl extends _LocationModel {
             (identical(other.timestamp, timestamp) ||
                 other.timestamp == timestamp) &&
             (identical(other.userName, userName) ||
-                other.userName == userName));
+                other.userName == userName) &&
+            (identical(other.visibleToEveryone, visibleToEveryone) ||
+                other.visibleToEveryone == visibleToEveryone) &&
+            const DeepCollectionEquality()
+                .equals(other._visibleToUserIds, _visibleToUserIds));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -260,6 +304,8 @@ class _$LocationModelImpl extends _LocationModel {
     longitude,
     timestamp,
     userName,
+    visibleToEveryone,
+    const DeepCollectionEquality().hash(_visibleToUserIds),
   );
 
   /// Create a copy of LocationModel
@@ -285,6 +331,8 @@ abstract class _LocationModel extends LocationModel {
     required final double longitude,
     final DateTime? timestamp,
     final String userName,
+    final bool visibleToEveryone,
+    final List<String> visibleToUserIds,
   }) = _$LocationModelImpl;
   const _LocationModel._() : super._();
 
@@ -305,6 +353,10 @@ abstract class _LocationModel extends LocationModel {
   DateTime? get timestamp;
   @override
   String get userName;
+  @override
+  bool get visibleToEveryone;
+  @override
+  List<String> get visibleToUserIds;
 
   /// Create a copy of LocationModel
   /// with the given fields replaced by the non-null parameter values.

@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -12,6 +14,7 @@ import '../../../auth/data/models/user_model.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../../tour/providers/tour_providers.dart';
 import '../../data/models/attendance_model.dart';
+import '../../data/models/roll_call_session_model.dart';
 import '../../providers/attendance_providers.dart';
 
 final userNameProvider = FutureProvider.family<String, String>((ref, userId) async {
@@ -33,6 +36,7 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
   final TextEditingController _searchController = TextEditingController();
   AttendanceTabFilter _currentFilter = AttendanceTabFilter.all;
   String _searchQuery = '';
+  Timer? _countdownTimer;
 
   @override
   void initState() {
@@ -42,10 +46,15 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
+    // Refresh countdown timer every second for active roll call session
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _countdownTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -59,7 +68,10 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
 
     final canManageAttendance = currentUser != null &&
         tour != null &&
-        tour.guideId == currentUser.userId;
+        tour.canManageTour(currentUser.userId);
+    final isPrimaryGuide = currentUser != null &&
+        tour != null &&
+        tour.isPrimaryGuide(currentUser.userId);
 
     final records = attendanceAsync.valueOrNull ?? [];
 
@@ -107,17 +119,44 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
     final filteredPresent = presentUsers.where(matchesSearch).toList();
     final filteredAbsent = absentUsers.where(matchesSearch).toList();
 
+    final activeSessionAsync = ref.watch(activeRollCallSessionProvider(widget.tourId));
+    final activeSession = activeSessionAsync.valueOrNull;
+    final isSessionActive =
+        activeSession != null && activeSession.isActive && !activeSession.isExpired;
+    final isUserPresent =
+        currentUser != null && latestPresentMap.containsKey(currentUser.userId);
+
     return Scaffold(
       appBar: KompassAppBar(
         title: 'Roll Call & Attendance',
         actions: [
-          if (!canManageAttendance)
+          if (!isPrimaryGuide) ...[
             IconButton(
               icon: const Icon(Icons.qr_code_2),
               tooltip: 'My QR Badge',
               onPressed: () => context.push('/tours/${widget.tourId}/qr'),
             ),
+            if (!isUserPresent)
+              IconButton(
+                icon: const Icon(Icons.pin_outlined),
+                tooltip: 'Enter 4-Digit Code',
+                onPressed: () => _showEnterCodeDialog(context, activeSession),
+              ),
+          ],
           if (canManageAttendance) ...[
+            IconButton(
+              icon: Icon(
+                isSessionActive ? Icons.timer : Icons.pin_outlined,
+                color: isSessionActive ? AppColors.primaryGold : null,
+              ),
+              tooltip: isSessionActive
+                  ? 'Active 4-Digit Roll Call Session'
+                  : 'Start 4-Digit Roll Call Session',
+              onPressed: () => _showStartSessionDialog(
+                context,
+                currentSession: activeSession,
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.qr_code_scanner),
               tooltip: 'Scan Participant QR Code',
@@ -142,7 +181,18 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
             percentage: checkInPercentage,
           ),
 
-          // ── 2. Participant Search Bar ──
+          // ── 2. 4-Digit Roll Call Session Banner ──
+          if (canManageAttendance)
+            _buildGuideSessionSection(context, activeSession, isSessionActive)
+          else
+            _buildParticipantRollCallSection(
+              context,
+              activeSession,
+              isSessionActive,
+              isUserPresent,
+            ),
+
+          // ── 3. Participant Search Bar ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
             child: TextField(
@@ -213,86 +263,134 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
               loading: () => const Center(
                 child: CircularProgressIndicator(color: AppColors.primaryGold),
               ),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              error: (e, _) => RefreshIndicator(
+                color: AppColors.primaryGold,
+                backgroundColor: AppColors.surface,
+                onRefresh: _onRefresh,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    const SizedBox(height: 120),
+                    Center(child: Text('Error: $e')),
+                  ],
+                ),
+              ),
               data: (_) {
+                Widget tabBody;
                 if (enrolledUsers.isEmpty && _currentFilter != AttendanceTabFilter.logs) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.group_off_outlined,
-                              size: 48, color: AppColors.textSecondary),
-                          const SizedBox(height: 12),
-                          Text(
-                            'No participants enrolled in this tour yet.',
-                            textAlign: TextAlign.center,
-                            style: AppTextStyles.titleMedium,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Invite participants via email or share the Tour Code to begin roll call.',
-                            textAlign: TextAlign.center,
-                            style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textHint,
-                            ),
-                          ),
-                        ],
+                  tabBody = ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(24.0),
+                    children: [
+                      const SizedBox(height: 80),
+                      const Icon(Icons.group_off_outlined,
+                          size: 48, color: AppColors.textSecondary),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No participants enrolled in this tour yet.',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.titleMedium,
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Invite participants via email or share the Tour Code to begin roll call.',
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                    ],
                   );
+                } else {
+                  switch (_currentFilter) {
+                    case AttendanceTabFilter.all:
+                      tabBody = _buildParticipantList(
+                        users: filteredAll,
+                        latestPresentMap: latestPresentMap,
+                        canManage: canManageAttendance,
+                        emptyMessage: _searchQuery.isNotEmpty
+                            ? 'No participants match "$_searchQuery"'
+                            : 'No participants enrolled.',
+                      );
+                    case AttendanceTabFilter.present:
+                      tabBody = _buildParticipantList(
+                        users: filteredPresent,
+                        latestPresentMap: latestPresentMap,
+                        canManage: canManageAttendance,
+                        emptyMessage: _searchQuery.isNotEmpty
+                            ? 'No present participants match "$_searchQuery"'
+                            : 'No participants marked present yet.',
+                      );
+                    case AttendanceTabFilter.absent:
+                      tabBody = _buildParticipantList(
+                        users: filteredAbsent,
+                        latestPresentMap: latestPresentMap,
+                        canManage: canManageAttendance,
+                        emptyMessage: _searchQuery.isNotEmpty
+                            ? 'No absent participants match "$_searchQuery"'
+                            : 'Awesome! All enrolled participants are checked in.',
+                      );
+                    case AttendanceTabFilter.logs:
+                      tabBody = _buildRawLogsList(
+                        records: records,
+                        canManage: canManageAttendance,
+                      );
+                  }
                 }
 
-                switch (_currentFilter) {
-                  case AttendanceTabFilter.all:
-                    return _buildParticipantList(
-                      users: filteredAll,
-                      latestPresentMap: latestPresentMap,
-                      canManage: canManageAttendance,
-                      emptyMessage: _searchQuery.isNotEmpty
-                          ? 'No participants match "$_searchQuery"'
-                          : 'No participants enrolled.',
-                    );
-                  case AttendanceTabFilter.present:
-                    return _buildParticipantList(
-                      users: filteredPresent,
-                      latestPresentMap: latestPresentMap,
-                      canManage: canManageAttendance,
-                      emptyMessage: _searchQuery.isNotEmpty
-                          ? 'No present participants match "$_searchQuery"'
-                          : 'No participants marked present yet.',
-                    );
-                  case AttendanceTabFilter.absent:
-                    return _buildParticipantList(
-                      users: filteredAbsent,
-                      latestPresentMap: latestPresentMap,
-                      canManage: canManageAttendance,
-                      emptyMessage: _searchQuery.isNotEmpty
-                          ? 'No absent participants match "$_searchQuery"'
-                          : 'Awesome! All enrolled participants are checked in.',
-                    );
-                  case AttendanceTabFilter.logs:
-                    return _buildRawLogsList(
-                      records: records,
-                      canManage: canManageAttendance,
-                    );
-                }
+                return RefreshIndicator(
+                  color: AppColors.primaryGold,
+                  backgroundColor: AppColors.surface,
+                  onRefresh: _onRefresh,
+                  child: tabBody,
+                );
               },
             ),
           ),
         ],
       ),
       floatingActionButton: canManageAttendance
-          ? FloatingActionButton.extended(
-              onPressed: () => _showManualAttendanceDialog(
-                context,
-                enrolledUsers.isNotEmpty ? enrolledUsers : allUsers,
-              ),
-              icon: const Icon(Icons.edit_note),
-              label: const Text('Manual Check-In'),
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                if (!isSessionActive)
+                  FloatingActionButton.extended(
+                    heroTag: 'start_session_fab',
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: AppColors.background,
+                    onPressed: () => _showStartSessionDialog(context),
+                    icon: const Icon(Icons.pin_outlined),
+                    label: const Text(
+                      'Start 4-Digit Session',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                if (!isSessionActive) const SizedBox(height: 10),
+                FloatingActionButton.extended(
+                  heroTag: 'manual_checkin_fab',
+                  onPressed: () => _showManualAttendanceDialog(
+                    context,
+                    enrolledUsers.isNotEmpty ? enrolledUsers : allUsers,
+                  ),
+                  icon: const Icon(Icons.edit_note),
+                  label: const Text('Manual Check-In'),
+                ),
+              ],
             )
-          : null,
+          : (!isUserPresent
+              ? FloatingActionButton.extended(
+                  heroTag: 'enter_code_fab',
+                  backgroundColor: AppColors.primaryGold,
+                  foregroundColor: AppColors.background,
+                  onPressed: () => _showEnterCodeDialog(context, activeSession),
+                  icon: const Icon(Icons.pin_outlined),
+                  label: const Text(
+                    'Enter 4-Digit Code',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                )
+              : null),
     );
   }
 
@@ -446,6 +544,13 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
     );
   }
 
+  Future<void> _onRefresh() async {
+    ref.invalidate(tourAttendanceProvider(widget.tourId));
+    ref.invalidate(tourDetailProvider(widget.tourId));
+    ref.invalidate(allUsersProvider);
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+  }
+
   Widget _buildParticipantList({
     required List<UserModel> users,
     required Map<String, AttendanceModel> latestPresentMap,
@@ -453,19 +558,22 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
     required String emptyMessage,
   }) {
     if (users.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text(
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24.0),
+        children: [
+          const SizedBox(height: 100),
+          Text(
             emptyMessage,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           ),
-        ),
+        ],
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
       itemCount: users.length,
       itemBuilder: (context, index) {
@@ -583,18 +691,22 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
     required bool canManage,
   }) {
     if (records.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Text(
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(24.0),
+        children: [
+          const SizedBox(height: 100),
+          Text(
             'No attendance history records logged yet.',
+            textAlign: TextAlign.center,
             style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
           ),
-        ),
+        ],
       );
     }
 
     return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
       itemCount: records.length,
       itemBuilder: (context, index) {
@@ -775,6 +887,713 @@ class _AttendanceLogScreenState extends ConsumerState<AttendanceLogScreen> {
           },
         );
       },
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // ── 4-DIGIT ROLL CALL SESSION WIDGETS & DIALOGS ──
+  // ══════════════════════════════════════════════════════════════
+
+  Widget _buildGuideSessionSection(
+    BuildContext context,
+    RollCallSessionModel? session,
+    bool isActive,
+  ) {
+    if (isActive && session != null) {
+      final remaining = session.remainingDuration;
+      final minutesStr = remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+      final secondsStr = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+      final timeStr = '$minutesStr:$secondsStr';
+
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.primaryGold, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primaryGold.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: const BoxDecoration(
+                        color: AppColors.success,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'ACTIVE ROLL CALL CODE',
+                      style: AppTextStyles.labelLarge.copyWith(
+                        color: AppColors.primaryGold,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryGold.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.timer_outlined, size: 14, color: AppColors.primaryGold),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Expires in $timeStr',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.primaryGold,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            // 4 Digits Display
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: session.code.split('').map((digit) {
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  width: 52,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.primaryGold, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    digit,
+                    style: AppTextStyles.displayLarge.copyWith(
+                      color: AppColors.primaryGold,
+                      fontSize: 34,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: session.code));
+                    AppToast.showSuccess('Code ${session.code} copied to clipboard!');
+                  },
+                  icon: const Icon(Icons.copy, size: 16, color: AppColors.primaryGold),
+                  label: const Text(
+                    'Copy Code',
+                    style: TextStyle(color: AppColors.primaryGold),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                TextButton.icon(
+                  onPressed: () => _confirmEndSession(context),
+                  icon: const Icon(Icons.stop_circle_outlined, size: 16, color: AppColors.error),
+                  label: const Text(
+                    'End Session',
+                    style: TextStyle(color: AppColors.error),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    // When no active session, show Start Session card for Guide
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppColors.primaryGold.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.pin_outlined, color: AppColors.primaryGold, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '4-Digit Roll Call Session',
+                  style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Generate a timed code for participants to mark themselves present.',
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGold,
+              foregroundColor: AppColors.background,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => _showStartSessionDialog(context),
+            child: const Text('Start', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildParticipantRollCallSection(
+    BuildContext context,
+    RollCallSessionModel? session,
+    bool isActive,
+    bool isUserPresent,
+  ) {
+    if (isUserPresent) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: AppColors.success.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.check_circle, color: AppColors.success, size: 24),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Checked In — Present',
+                    style: AppTextStyles.labelLarge.copyWith(
+                      color: AppColors.success,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    'Your attendance has been recorded for this expedition.',
+                    style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final remaining = session != null ? session.remainingDuration : Duration.zero;
+    final timeStr = isActive
+        ? '${remaining.inMinutes.remainder(60).toString().padLeft(2, '0')}:${remaining.inSeconds.remainder(60).toString().padLeft(2, '0')}'
+        : null;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isActive ? AppColors.primaryGold : AppColors.border,
+          width: isActive ? 1.5 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primaryGold.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.pin_invoke_outlined, color: AppColors.primaryGold, size: 26),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Roll Call Check-In',
+                      style: AppTextStyles.labelLarge.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    if (isActive && timeStr != null) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGold.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          timeStr,
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.primaryGold,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  isActive
+                      ? 'Live session active! Enter the 4-digit code from your Guide.'
+                      : 'Enter the 4-digit code from your Guide to mark yourself Present.',
+                  style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryGold,
+              foregroundColor: AppColors.background,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => _showEnterCodeDialog(context, session),
+            child: const Text('Enter Code', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showStartSessionDialog(
+    BuildContext context, {
+    RollCallSessionModel? currentSession,
+  }) {
+    int selectedMinutes = 5; // Default: 5 minutes
+    final customController = TextEditingController();
+    bool isCustom = false;
+    final currentUser = ref.read(currentUserProvider).valueOrNull;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            final now = DateTime.now();
+            final expiryTime = now.add(Duration(minutes: selectedMinutes));
+            final expiryFormatted = DateFormat('h:mm a').format(expiryTime);
+
+            final presets = [1, 2, 3, 5, 10, 15, 30];
+
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryGold.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.pin_outlined, color: AppColors.primaryGold, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Start 4-Digit Roll Call',
+                              style: AppTextStyles.headlineMedium.copyWith(fontSize: 18),
+                            ),
+                            Text(
+                              'Participants enter this code on their phones to check in',
+                              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'SESSION DURATION (DEFAULT: 5 MIN)',
+                    style: AppTextStyles.labelMedium.copyWith(
+                      color: AppColors.primaryGold,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      ...presets.map((mins) {
+                        final isSelected = !isCustom && selectedMinutes == mins;
+                        return ChoiceChip(
+                          label: Text(mins == 5 ? '5 min (Default)' : '$mins min'),
+                          selected: isSelected,
+                          selectedColor: AppColors.primaryGold,
+                          labelStyle: TextStyle(
+                            color: isSelected ? AppColors.background : AppColors.textPrimary,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setModalState(() {
+                                isCustom = false;
+                                selectedMinutes = mins;
+                                customController.clear();
+                              });
+                            }
+                          },
+                        );
+                      }),
+                      ChoiceChip(
+                        label: const Text('Custom...'),
+                        selected: isCustom,
+                        selectedColor: AppColors.primaryGold,
+                        labelStyle: TextStyle(
+                          color: isCustom ? AppColors.background : AppColors.textPrimary,
+                          fontWeight: isCustom ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        onSelected: (selected) {
+                          setModalState(() {
+                            isCustom = selected;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  if (isCustom) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: customController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Duration in minutes (1 - 120)',
+                        suffixText: 'minutes',
+                        prefixIcon: Icon(Icons.schedule),
+                      ),
+                      onChanged: (val) {
+                        final parsed = int.tryParse(val.trim());
+                        if (parsed != null && parsed > 0 && parsed <= 120) {
+                          setModalState(() {
+                            selectedMinutes = parsed;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, size: 18, color: AppColors.primaryGold),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Session will remain valid for $selectedMinutes minute${selectedMinutes > 1 ? 's' : ''} (until $expiryFormatted).',
+                            style: AppTextStyles.bodySmall.copyWith(color: AppColors.textPrimary),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGold,
+                        foregroundColor: AppColors.background,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.play_arrow_rounded),
+                      label: const Text(
+                        'GENERATE 4-DIGIT CODE',
+                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+                      ),
+                      onPressed: () async {
+                        try {
+                          Navigator.pop(ctx);
+                          final session = await ref
+                              .read(attendanceControllerProvider.notifier)
+                              .createRollCallSession(
+                                tourId: widget.tourId,
+                                guideId: currentUser?.userId ?? '',
+                                guideName: currentUser?.name ?? 'Tour Guide',
+                                durationMinutes: selectedMinutes,
+                              );
+                          AppToast.showSuccess(
+                            'Session started! Code: ${session.code} (Expires in $selectedMinutes min)',
+                          );
+                        } catch (e) {
+                          AppToast.showError('Failed to start session: $e');
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showEnterCodeDialog(BuildContext context, RollCallSessionModel? session) {
+    final codeController = TextEditingController();
+    final currentUser = ref.read(currentUserProvider).valueOrNull;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final remaining = session != null ? session.remainingDuration : Duration.zero;
+            final isSessionActive = session != null && session.isActive && !session.isExpired;
+            final timeStr = isSessionActive
+                ? '${remaining.inMinutes.remainder(60).toString().padLeft(2, '0')}:${remaining.inSeconds.remainder(60).toString().padLeft(2, '0')}'
+                : null;
+
+            return AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryGold.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.pin_invoke_outlined, color: AppColors.primaryGold, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Roll Call Check-In',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    'Enter the 4-digit code announced or displayed by your Tour Guide:',
+                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                  ),
+                  if (isSessionActive && timeStr != null) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.timer_outlined, size: 14, color: AppColors.primaryGold),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Session active • Expires in $timeStr',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: AppColors.primaryGold,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  TextField(
+                    controller: codeController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 4,
+                    autofocus: true,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.displayMedium.copyWith(
+                      color: AppColors.primaryGold,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 16,
+                    ),
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      hintText: '••••',
+                      counterText: '',
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primaryGold, width: 1.5),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: AppColors.primaryGold.withValues(alpha: 0.5),
+                          width: 1.5,
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: AppColors.background,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final code = codeController.text.trim();
+                          if (code.length != 4) {
+                            AppToast.showError('Please enter a full 4-digit code.');
+                            return;
+                          }
+
+                          if (currentUser == null) {
+                            AppToast.showError('User session not found.');
+                            return;
+                          }
+
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            await ref
+                                .read(attendanceControllerProvider.notifier)
+                                .verifyCodeAndCheckIn(
+                                  tourId: widget.tourId,
+                                  userId: currentUser.userId,
+                                  enteredCode: code,
+                                );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            AppToast.showSuccess('✓ Check-in successful! Marked as Present.');
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            final msg = e.toString().replaceFirst('Exception: ', '').replaceFirst('DatabaseException: ', '');
+                            AppToast.showError(msg);
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.background),
+                        )
+                      : const Text('Check In', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmEndSession(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('End Roll Call Session?'),
+        content: const Text(
+          'Ending this session will invalidate the 4-digit code. Participants who haven\'t checked in yet will not be able to use this code.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await ref
+                    .read(attendanceControllerProvider.notifier)
+                    .endRollCallSession(widget.tourId);
+                AppToast.showInfo('Roll call session ended.');
+              } catch (e) {
+                AppToast.showError('Failed to end session: $e');
+              }
+            },
+            child: const Text('End Session'),
+          ),
+        ],
+      ),
     );
   }
 }

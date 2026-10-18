@@ -14,12 +14,13 @@ class AnnouncementRepository {
           .doc(tourId)
           .collection('Announcements');
 
-  Future<void> createAnnouncement(
+  Future<String> createAnnouncement(
     String tourId,
     AnnouncementModel announcement,
   ) async {
     try {
-      await _announcementsRef(tourId).add(announcement.toFirestore());
+      final docRef = await _announcementsRef(tourId).add(announcement.toFirestore());
+      return docRef.id;
     } catch (e) {
       throw DatabaseException('Failed to create announcement: $e');
     }

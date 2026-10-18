@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +9,10 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_toast.dart';
 import '../../../../core/enums/user_role.dart';
+import '../../../../services/notifications/notification_service.dart';
+import '../../../../services/notifications/fcm_direct_dispatcher.dart';
 import '../../../auth/providers/auth_providers.dart';
+import '../../../tour/providers/tour_providers.dart';
 import '../../providers/messaging_providers.dart';
 import '../../data/models/announcement_model.dart';
 
@@ -23,7 +27,7 @@ class AnnouncementsScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('New Announcement'),
+        title: const Text('New Broadcast Announcement'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -53,33 +57,58 @@ class AnnouncementsScreen extends ConsumerWidget {
                 return;
               }
 
-              final user = ref.read(currentUserProvider).value;
-              final authUser = ref.read(authStateChangesProvider).value;
+              final user = ref.read(currentUserProvider).valueOrNull;
+              final authUser = ref.read(authStateChangesProvider).valueOrNull;
+              final tour = ref.read(tourDetailProvider(tourId)).valueOrNull;
               if (authUser == null) {
                 AppToast.showError('User session expired. Please sign in again.');
                 return;
               }
 
+              final senderName = user?.name ?? 'Tour Guide';
               final announcement = AnnouncementModel(
                 announcementId: '',
                 tourId: tourId,
                 title: title,
                 message: msg,
                 createdBy: authUser.uid,
-                createdByName: user?.name ?? 'Guide',
+                createdByName: senderName,
               );
 
               Navigator.pop(dialogContext);
               try {
-                await ref
+                final announcementId = await ref
                     .read(announcementRepositoryProvider)
                     .createAnnouncement(tourId, announcement);
-                AppToast.showSuccess('Announcement posted successfully!');
+
+                // Dispatch direct background push notification to all participants via FCM
+                unawaited(
+                  FcmDirectDispatcher.instance.sendAnnouncement(
+                    tourId: tourId,
+                    tourName: tour?.name ?? 'Tour',
+                    title: title,
+                    messageText: msg,
+                    senderId: authUser.uid,
+                    announcementId: announcementId,
+                  ).catchError((err) {
+                    debugPrint('FCM direct send announcement error: $err');
+                  }),
+                );
+
+                // Dispatch local device notification confirmation as well
+                await NotificationService.instance.showNotification(
+                  id: DateTime.now().millisecondsSinceEpoch,
+                  title: '📢 BROADCAST: $title',
+                  body: '$msg\n— $senderName (${tour?.name ?? 'Tour'})',
+                  payload: 'announcement:$tourId',
+                );
+
+                AppToast.showSuccess('Broadcast announcement sent to all participants!');
               } catch (e) {
                 AppToast.showError('Failed to post announcement: $e');
               }
             },
-            child: const Text('Post'),
+            child: const Text('Broadcast'),
           ),
         ],
       ),
@@ -89,62 +118,108 @@ class AnnouncementsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final announcementsAsync = ref.watch(tourAnnouncementsProvider(tourId));
-    final currentUser = ref.watch(currentUserProvider).value;
-    final isGuide = currentUser?.userRole == UserRole.guide || currentUser?.userRole == UserRole.admin;
+    final currentUser = ref.watch(currentUserProvider).valueOrNull;
+    final tour = ref.watch(tourDetailProvider(tourId)).valueOrNull;
+    final canBroadcast = currentUser != null &&
+        (currentUser.userRole == UserRole.admin ||
+            (tour != null && tour.canManageTour(currentUser.userId)));
+
+    Future<void> onRefresh() async {
+      ref.invalidate(tourAnnouncementsProvider(tourId));
+      ref.invalidate(tourDetailProvider(tourId));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
 
     return Scaffold(
       appBar: const KompassAppBar(title: 'Captain\'s Orders'),
-      floatingActionButton: isGuide
-          ? FloatingActionButton(
+      floatingActionButton: canBroadcast
+          ? FloatingActionButton.extended(
               onPressed: () => _showAddAnnouncementDialog(context, ref),
-              child: const Icon(Icons.campaign),
+              icon: const Icon(Icons.campaign),
+              label: const Text('Broadcast'),
             )
           : null,
       body: announcementsAsync.when(
         data: (announcements) {
-          if (announcements.isEmpty) {
-            return const KompassEmptyState(
-              title: 'No announcements',
-              message: 'Check back later for updates.',
-              icon: Icons.campaign_outlined,
-            );
-          }
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: announcements.length,
-            itemBuilder: (context, index) {
-              final announcement = announcements[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(announcement.title, style: AppTextStyles.headlineLarge),
-                      const SizedBox(height: 8),
-                      Text(announcement.message, style: AppTextStyles.bodyMedium),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('By ${announcement.createdByName}', style: AppTextStyles.labelMedium),
-                          if (announcement.timestamp != null)
-                            Text(
-                              DateFormat.yMMMd().add_jm().format(announcement.timestamp!),
-                              style: AppTextStyles.labelMedium.copyWith(color: AppColors.textSecondary),
-                            ),
-                        ],
+          return RefreshIndicator(
+            color: AppColors.primaryGold,
+            backgroundColor: AppColors.surface,
+            onRefresh: onRefresh,
+            child: announcements.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 160),
+                      KompassEmptyState(
+                        title: 'No announcements',
+                        message: 'Pull down to refresh or check back later for updates.',
+                        icon: Icons.campaign_outlined,
                       ),
                     ],
+                  )
+                : ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    itemCount: announcements.length,
+                    itemBuilder: (context, index) {
+                      final announcement = announcements[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                announcement.title,
+                                style: AppTextStyles.headlineLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                announcement.message,
+                                style: AppTextStyles.bodyMedium,
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'By ${announcement.createdByName}',
+                                    style: AppTextStyles.labelMedium,
+                                  ),
+                                  if (announcement.timestamp != null)
+                                    Text(
+                                      DateFormat.yMMMd()
+                                          .add_jm()
+                                          .format(announcement.timestamp!),
+                                      style: AppTextStyles.labelMedium.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                ),
-              );
-            },
           );
         },
         loading: () => const Center(child: KompassLoading()),
-        error: (e, st) => Center(child: Text('Error: $e')),
+        error: (e, st) => RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surface,
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              const SizedBox(height: 160),
+              Center(child: Text('Error: $e')),
+            ],
+          ),
+        ),
       ),
     );
   }

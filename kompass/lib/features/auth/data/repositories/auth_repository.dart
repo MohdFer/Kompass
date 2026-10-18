@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/app_exception.dart';
 import '../../../../services/storage/hive_service.dart';
@@ -9,6 +11,7 @@ abstract class AuthRepository {
   Stream<User?> authStateChanges();
   User? get currentUser;
   Future<UserModel> signInWithEmailAndPassword(String email, String password);
+  Future<UserModel> signInWithGoogle();
   Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, String role);
   Future<void> signOut();
   Future<void> sendPasswordResetEmail(String email);
@@ -82,8 +85,75 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
+  Future<UserModel> signInWithGoogle() async {
+    try {
+      UserCredential userCredential;
+      if (kIsWeb) {
+        final googleProvider = GoogleAuthProvider();
+        googleProvider.addScope('email');
+        googleProvider.addScope('profile');
+        userCredential = await _auth.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignIn googleSignIn = GoogleSignIn();
+        final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+        if (googleUser == null) {
+          throw const AuthException('Google sign-in was cancelled.');
+        }
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+        userCredential = await _auth.signInWithCredential(credential);
+      }
+
+      final user = userCredential.user;
+      if (user == null) {
+        throw const AuthException('Failed to retrieve user from Google account.');
+      }
+
+      // 1. Check if user profile already exists in Firestore
+      final existingUser = await getUserData(user.uid);
+      if (existingUser != null) {
+        await HiveService.instance.cacheUserProfile(existingUser.toJson());
+        return existingUser;
+      }
+
+      // 2. First-time Google user: create user document in Firestore with participant role
+      final newUser = UserModel(
+        userId: user.uid,
+        name: user.displayName?.isNotEmpty == true
+            ? user.displayName!
+            : 'Explorer',
+        email: user.email ?? '',
+        role: 'participant',
+        createdAt: DateTime.now(),
+      );
+
+      await _firestore
+          .collection(FirestoreConstants.usersCollection)
+          .doc(newUser.userId)
+          .set(newUser.toFirestore());
+
+      await HiveService.instance.cacheUserProfile(newUser.toJson());
+      return newUser;
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(e.message ?? 'Google authentication failed.');
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw DatabaseException('Failed to complete Google sign-in: $e');
+    }
+  }
+
+  @override
   Future<void> signOut() async {
     await HiveService.instance.clearAll();
+    try {
+      if (!kIsWeb) {
+        await GoogleSignIn().signOut();
+      }
+    } catch (_) {}
     await _auth.signOut();
   }
 

@@ -75,6 +75,13 @@ class AppTextStyles {
     color: AppColors.textSecondary,
   );
 
+  static TextStyle get labelSmall => TextStyle(
+    fontFamily: _fontFamily,
+    fontSize: 10,
+    fontWeight: FontWeight.w500,
+    color: AppColors.textSecondary,
+  );
+
   static TextStyle get button => TextStyle(
     fontFamily: _fontFamily,
     fontSize: 16,

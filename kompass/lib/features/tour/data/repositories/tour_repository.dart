@@ -27,6 +27,11 @@ abstract class TourRepository {
     required bool approve,
   });
   Future<void> removeParticipant(String tourId, String userId);
+  Future<void> toggleGuestGuide(
+    String tourId,
+    String userId, {
+    required bool isGuestGuide,
+  });
   Future<void> updateTourStatus(String tourId, String status);
   Future<void> assignGuide(String tourId, String guideId);
 }
@@ -303,6 +308,7 @@ class FirebaseTourRepository implements TourRepository {
         .doc(tourId)
         .update({
       'participantIds': FieldValue.arrayRemove([userId]),
+      'guestGuideIds': FieldValue.arrayRemove([userId]),
     });
 
     try {
@@ -315,6 +321,22 @@ class FirebaseTourRepository implements TourRepository {
           .doc('${tourId}_$userId')
           .delete();
     } catch (_) {}
+  }
+
+  @override
+  Future<void> toggleGuestGuide(
+    String tourId,
+    String userId, {
+    required bool isGuestGuide,
+  }) async {
+    await _firestore
+        .collection(FirestoreConstants.toursCollection)
+        .doc(tourId)
+        .update({
+      'guestGuideIds': isGuestGuide
+          ? FieldValue.arrayUnion([userId])
+          : FieldValue.arrayRemove([userId]),
+    });
   }
 
   @override

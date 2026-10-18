@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +17,7 @@ import '../../../auth/providers/auth_providers.dart';
 import '../../../location/data/models/location_model.dart';
 import '../../../location/providers/location_providers.dart';
 import '../../../tour/providers/tour_providers.dart';
+import '../../../../services/notifications/fcm_direct_dispatcher.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../../providers/emergency_providers.dart';
 
@@ -29,9 +31,15 @@ class SOSScreen extends ConsumerWidget {
     final tour = ref.watch(tourDetailProvider(tourId)).valueOrNull;
     final isGuide = user?.userRole == UserRole.guide ||
         user?.userRole == UserRole.admin ||
-        (tour != null && user != null && tour.guideId == user.userId);
+        (tour != null && user != null && tour.canManageTour(user.userId));
 
     final alertsAsync = ref.watch(activeSOSAlertsProvider(tourId));
+
+    Future<void> onRefresh() async {
+      ref.invalidate(activeSOSAlertsProvider(tourId));
+      ref.invalidate(tourDetailProvider(tourId));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
 
     return Scaffold(
       appBar: KompassAppBar(
@@ -46,53 +54,70 @@ class SOSScreen extends ConsumerWidget {
       ),
       body: alertsAsync.when(
         loading: () => const Center(child: KompassLoading(message: 'Checking distress signals...')),
-        error: (e, _) => Center(child: Text('Error: $e')),
-        data: (activeAlerts) {
-          return ListView(
-            padding: const EdgeInsets.all(16),
+        error: (e, _) => RefreshIndicator(
+          color: AppColors.primaryGold,
+          backgroundColor: AppColors.surface,
+          onRefresh: onRefresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              // ── Active Distress Signals Section (Visible to Guides AND Participants) ──
-              if (activeAlerts.isNotEmpty) ...[
-                Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded,
-                        color: AppColors.error, size: 26),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ACTIVE DISTRESS SIGNALS (${activeAlerts.length})',
-                      style: AppTextStyles.headlineMedium.copyWith(
-                        color: AppColors.error,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ...activeAlerts.map(
-                  (alert) => _buildAlertCard(context, ref, alert, user?.userId, isGuide),
-                ),
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 16),
-              ],
-
-              // ── Panic Trigger / Ready View ──
-              if (activeAlerts.isEmpty && isGuide) ...[
-                const SizedBox(height: 32),
-                const KompassEmptyState(
-                  title: 'All Clear on Expedition',
-                  message: 'No active SOS alerts in this tour right now. All crew members are reported safe.',
-                  icon: Icons.check_circle_outline,
-                ),
-                const SizedBox(height: 32),
-              ],
-
-              // ── Panic Button Component for Triggering Emergency ──
-              _PanicTriggerSection(
-                tourId: tourId,
-                tourName: tour?.name ?? 'Tour',
-              ),
+              const SizedBox(height: 160),
+              Center(child: Text('Error: $e')),
             ],
+          ),
+        ),
+        data: (activeAlerts) {
+          return RefreshIndicator(
+            color: AppColors.primaryGold,
+            backgroundColor: AppColors.surface,
+            onRefresh: onRefresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ── Active Distress Signals Section (Visible to Guides AND Participants) ──
+                if (activeAlerts.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      const Icon(Icons.warning_amber_rounded,
+                          color: AppColors.error, size: 26),
+                      const SizedBox(width: 8),
+                      Text(
+                        'ACTIVE DISTRESS SIGNALS (${activeAlerts.length})',
+                        style: AppTextStyles.headlineMedium.copyWith(
+                          color: AppColors.error,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ...activeAlerts.map(
+                    (alert) => _buildAlertCard(context, ref, alert, user?.userId, isGuide),
+                  ),
+                  const SizedBox(height: 24),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                ],
+
+                // ── Panic Trigger / Ready View ──
+                if (activeAlerts.isEmpty && isGuide) ...[
+                  const SizedBox(height: 32),
+                  const KompassEmptyState(
+                    title: 'All Clear on Expedition',
+                    message: 'No active SOS alerts in this tour right now. All crew members are reported safe.',
+                    icon: Icons.check_circle_outline,
+                  ),
+                  const SizedBox(height: 32),
+                ],
+
+                // ── Panic Button Component for Triggering Emergency ──
+                _PanicTriggerSection(
+                  tourId: tourId,
+                  tourName: tour?.name ?? 'Tour',
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -417,7 +442,23 @@ class _PanicTriggerSectionState extends ConsumerState<_PanicTriggerSection> {
         message: message,
       );
 
-      await ref.read(emergencyRepositoryProvider).triggerSOS(widget.tourId, alert);
+      final alertId = await ref.read(emergencyRepositoryProvider).triggerSOS(widget.tourId, alert);
+
+      // 4. Dispatch direct high-priority FCM emergency push to all tour members & guide
+      unawaited(
+        FcmDirectDispatcher.instance.sendSosDistress(
+          tourId: widget.tourId,
+          tourName: widget.tourName,
+          userName: user?.name ?? 'Explorer',
+          reason: message,
+          senderId: authUser.uid,
+          alertId: alertId,
+          latitude: latitude,
+          longitude: longitude,
+        ).catchError((err) {
+          debugPrint('FCM direct send SOS error: $err');
+        }),
+      );
 
       try {
         await HapticFeedback.heavyImpact();

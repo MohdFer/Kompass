@@ -24,13 +24,38 @@ abstract class ItineraryModel with _$ItineraryModel {
   static ItineraryModel fromFirestore(
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
-    final data = doc.data()!;
-    return ItineraryModel.fromJson({
-      ...data,
-      'itineraryId': doc.id,
-      'date': (data['date'] as Timestamp).toDate().toIso8601String(),
-      'createdAt': (data['createdAt'] as Timestamp?)?.toDate().toIso8601String(),
-    });
+    final data = doc.data() ?? {};
+    final rawActivities = data['activities'] as List<dynamic>? ?? [];
+    final activities = rawActivities.map((e) {
+      if (e is Map<String, dynamic>) {
+        return ActivityItem.fromJson(e);
+      } else if (e is Map) {
+        return ActivityItem.fromJson(Map<String, dynamic>.from(e));
+      }
+      return null;
+    }).whereType<ActivityItem>().toList();
+
+    DateTime parseDate(dynamic value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    DateTime? parseNullableDate(dynamic value) {
+      if (value is Timestamp) return value.toDate();
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
+    return ItineraryModel(
+      itineraryId: doc.id,
+      tourId: data['tourId'] as String? ?? '',
+      title: data['title'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      date: parseDate(data['date']),
+      activities: activities,
+      createdAt: parseNullableDate(data['createdAt']),
+    );
   }
 }
 
@@ -44,6 +69,7 @@ abstract class ActivityItem with _$ActivityItem {
     @Default('') String locationName,
     double? latitude,
     double? longitude,
+    @Default(false) bool isCompleted,
   }) = _ActivityItem;
 
   factory ActivityItem.fromJson(Map<String, dynamic> json) =>

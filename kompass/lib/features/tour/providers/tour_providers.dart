@@ -83,6 +83,16 @@ class TourController extends _$TourController {
     return ref.read(tourRepositoryProvider).removeParticipant(tourId, userId);
   }
 
+  Future<void> toggleGuestGuide(
+    String tourId,
+    String userId, {
+    required bool isGuestGuide,
+  }) {
+    return ref
+        .read(tourRepositoryProvider)
+        .toggleGuestGuide(tourId, userId, isGuestGuide: isGuestGuide);
+  }
+
   Future<void> updateTourStatus(String tourId, String status) {
     return ref.read(tourRepositoryProvider).updateTourStatus(tourId, status);
   }

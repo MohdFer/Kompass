@@ -44,6 +44,7 @@ _$ActivityItemImpl _$$ActivityItemImplFromJson(Map<String, dynamic> json) =>
       locationName: json['locationName'] as String? ?? '',
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      isCompleted: json['isCompleted'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$$ActivityItemImplToJson(_$ActivityItemImpl instance) =>
@@ -55,4 +56,5 @@ Map<String, dynamic> _$$ActivityItemImplToJson(_$ActivityItemImpl instance) =>
       'locationName': instance.locationName,
       'latitude': instance.latitude,
       'longitude': instance.longitude,
+      'isCompleted': instance.isCompleted,
     };

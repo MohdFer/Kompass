@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../data/models/document_model.dart';
@@ -29,22 +29,28 @@ class DocumentUploadController extends StateNotifier<AsyncValue<void>> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf', 'jpg', 'jpeg', 'png', 'doc', 'docx'],
+        withData: true,
       );
 
-      if (result == null || result.files.single.path == null) {
+      if (result == null || result.files.isEmpty) {
         state = const AsyncValue.data(null);
         return null;
       }
 
-      final file = File(result.files.single.path!);
-      final fileName = result.files.single.name;
+      final pickedFile = result.files.single;
+      final Uint8List? fileBytes = pickedFile.bytes;
+      if (fileBytes == null) {
+        throw Exception('Could not read file data. Please try another file.');
+      }
+
+      final fileName = pickedFile.name;
       final currentUser = await ref.read(currentUserProvider.future);
-      final uploaderName = currentUser?.name ?? 'Unknown Guide';
+      final uploaderName = currentUser?.name ?? 'Tour Crew';
 
       await ref.read(documentRepositoryProvider).uploadDocument(
             tourId: tourId,
             fileName: fileName,
-            file: file,
+            fileBytes: fileBytes,
             uploadedBy: uploaderName,
           );
       state = const AsyncValue.data(null);
