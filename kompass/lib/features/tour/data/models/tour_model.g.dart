@@ -23,7 +23,19 @@ _$TourModelImpl _$$TourModelImplFromJson(Map<String, dynamic> json) =>
               ?.map((e) => e as String)
               .toList() ??
           const [],
+      invitedUserIds:
+          (json['invitedUserIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
+      pendingRequestUserIds:
+          (json['pendingRequestUserIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const [],
       status: json['status'] as String? ?? 'Draft',
+      isPublic: json['isPublic'] as bool? ?? true,
+      requireJoinApproval: json['requireJoinApproval'] as bool? ?? false,
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
@@ -38,6 +50,10 @@ Map<String, dynamic> _$$TourModelImplToJson(_$TourModelImpl instance) =>
       'endDate': instance.endDate?.toIso8601String(),
       'guideId': instance.guideId,
       'participantIds': instance.participantIds,
+      'invitedUserIds': instance.invitedUserIds,
+      'pendingRequestUserIds': instance.pendingRequestUserIds,
       'status': instance.status,
+      'isPublic': instance.isPublic,
+      'requireJoinApproval': instance.requireJoinApproval,
       'createdAt': instance.createdAt?.toIso8601String(),
     };

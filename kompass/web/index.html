@@ -1,38 +1,140 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="KOMPASS: Navigate Together, Explore Forever">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="kompass">
+  <meta name="apple-mobile-web-app-title" content="KOMPASS">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>kompass</title>
+  <title>KOMPASS</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000000;
+      color: #FFFFFF;
+      font-family: "Outfit", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #kompass-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at center, rgba(156, 255, 80, 0.08) 0%, #000000 70%);
+      z-index: 999999;
+      transition: opacity 0.45s ease-out, visibility 0.45s ease-out;
+    }
+
+    #kompass-splash.fade-out {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .splash-logo-wrapper {
+      position: relative;
+      width: 132px;
+      height: 132px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+
+    .splash-ring {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 2px solid #333333;
+      border-top-color: #E4FF00;
+      border-right-color: #9CFF50;
+      animation: spin 1.6s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
+    }
+
+    .splash-logo {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      box-shadow: 0 0 28px rgba(156, 255, 80, 0.25);
+      animation: pulse 2.2s ease-in-out infinite;
+    }
+
+    .splash-title {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 6px;
+      color: #FFFFFF;
+      margin: 0 0 8px 0;
+    }
+
+    .splash-tagline {
+      font-size: 14px;
+      color: #898989;
+      letter-spacing: 1px;
+      margin: 0 0 32px 0;
+    }
+
+    .splash-status {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #9CFF50;
+      opacity: 0.9;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+  </style>
 </head>
 <body>
+  <div id="kompass-splash">
+    <div class="splash-logo-wrapper">
+      <div class="splash-ring"></div>
+      <img class="splash-logo" src="icons/Icon-192.png" alt="KOMPASS Logo" />
+    </div>
+    <h1 class="splash-title">KOMPASS</h1>
+    <p class="splash-tagline">Navigate Together, Explore Forever</p>
+    <div class="splash-status" id="splash-status-text">Loading Framework...</div>
+  </div>
+
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('kompass-splash');
+      if (splash) {
+        splash.classList.add('fade-out');
+        setTimeout(function () {
+          if (splash && splash.parentNode) {
+            splash.parentNode.removeChild(splash);
+          }
+        }, 500);
+      }
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

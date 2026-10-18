@@ -180,21 +180,20 @@ class _TourDetailProviderElement
   String get tourId => (origin as TourDetailProvider).tourId;
 }
 
-String _$tourControllerHash() => r'63359b5d1bf744608f95073f318577652af81d87';
+String _$tourControllerHash() => r'250154d61702250804f25aecf4898b8db30ba88a';
 
 /// See also [TourController].
 @ProviderFor(TourController)
-final tourControllerProvider =
-    AutoDisposeAsyncNotifierProvider<TourController, void>.internal(
-      TourController.new,
-      name: r'tourControllerProvider',
-      debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
-          ? null
-          : _$tourControllerHash,
-      dependencies: null,
-      allTransitiveDependencies: null,
-    );
+final tourControllerProvider = NotifierProvider<TourController, void>.internal(
+  TourController.new,
+  name: r'tourControllerProvider',
+  debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
+      ? null
+      : _$tourControllerHash,
+  dependencies: null,
+  allTransitiveDependencies: null,
+);
 
-typedef _$TourController = AutoDisposeAsyncNotifier<void>;
+typedef _$TourController = Notifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

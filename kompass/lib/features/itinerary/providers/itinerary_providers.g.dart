@@ -168,12 +168,12 @@ class _TourItinerariesProviderElement
 }
 
 String _$itineraryControllerHash() =>
-    r'465d646ad4d3c0be6b82fba8b7860a30f5d0ba73';
+    r'1568c41d1031a90ba65eff264f5c8f6586b9c0f7';
 
 /// See also [ItineraryController].
 @ProviderFor(ItineraryController)
 final itineraryControllerProvider =
-    AutoDisposeAsyncNotifierProvider<ItineraryController, void>.internal(
+    NotifierProvider<ItineraryController, void>.internal(
       ItineraryController.new,
       name: r'itineraryControllerProvider',
       debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
@@ -183,6 +183,6 @@ final itineraryControllerProvider =
       allTransitiveDependencies: null,
     );
 
-typedef _$ItineraryController = AutoDisposeAsyncNotifier<void>;
+typedef _$ItineraryController = Notifier<void>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member, deprecated_member_use_from_same_package

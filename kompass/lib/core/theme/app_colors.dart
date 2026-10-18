@@ -35,7 +35,9 @@ class AppColors {
   static const Color primaryGoldLight = primaryNeon;
   static const Color primaryGoldDark = primaryNeonGreen;
   static const Color secondaryTeal = primaryNeonGreen;
+  static const Color secondaryTealLight = primaryNeonGreen;
   static const Color accentRed = error;
+  static const Color sosRed = error;
   static const Color sandDark = border;
   static const Color cardShadow = Color(0x33000000);
   static const Color textHint = grayMedium;

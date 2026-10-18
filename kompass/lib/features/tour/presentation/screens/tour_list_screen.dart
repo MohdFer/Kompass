@@ -31,7 +31,11 @@ class TourListScreen extends ConsumerWidget {
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(tour.name),
-                  subtitle: Text(tour.description),
+                  subtitle: Text(
+                    '${tour.description}\nStatus: ${tour.status} • Participants: ${tour.participantCount}',
+                  ),
+                  isThreeLine: true,
+                  trailing: const Icon(Icons.chevron_right),
                 ),
                 onTap: () => context.push('/tours/${tour.tourId}'),
               );
@@ -42,7 +46,7 @@ class TourListScreen extends ConsumerWidget {
         error: (error, stack) => Center(child: Text('Error: $error')),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/create-tour'),
+        onPressed: () => context.push('/tours/create'),
         child: const Icon(Icons.add),
       ),
     );

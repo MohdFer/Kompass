@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/providers/auth_providers.dart';
 import '../core/enums/user_role.dart';
+import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
 import '../features/auth/presentation/screens/forgot_password_screen.dart';
+import '../features/auth/presentation/screens/profile_screen.dart';
 import '../features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 import '../features/dashboard/presentation/screens/guide_dashboard_screen.dart';
 import '../features/dashboard/presentation/screens/participant_dashboard_screen.dart';
@@ -26,36 +28,49 @@ import 'route_names.dart';
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
   final currentUserState = ref.watch(currentUserProvider);
+  final splashCompleted = ref.watch(splashCompletedProvider);
 
   return GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/splash',
     debugLogDiagnostics: true,
     redirect: (context, state) {
-      final isLoggedIn = authState.valueOrNull != null;
-      final isAuthRoute = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register' ||
-          state.matchedLocation == '/forgot-password';
-
-      // Redirect to login if not authenticated
-      if (!isLoggedIn && !isAuthRoute) return '/login';
-
-      // If logged in but user data is still loading, wait on a splash or let it resolve
-      if (isLoggedIn && currentUserState.isLoading) {
-        // Just return null to stay on current route while loading
+      final isSplashRoute = state.matchedLocation == '/splash';
+      if (isSplashRoute && !splashCompleted) {
         return null;
       }
 
-      // Redirect away from auth pages if already logged in and user data is available
+      final isLoggedIn = authState.valueOrNull != null;
+      final isAuthRoute = state.matchedLocation == '/login' ||
+          state.matchedLocation == '/register' ||
+          state.matchedLocation == '/forgot-password' ||
+          isSplashRoute;
+
+      // Redirect to login if not authenticated
+      if (!isLoggedIn && !isAuthRoute) return '/login';
+      if (!isLoggedIn && isSplashRoute && splashCompleted) return '/login';
+
+      // If logged in but user data is still loading, wait on current route
+      if (isLoggedIn && currentUserState.isLoading) {
+        return null;
+      }
+
+      // Redirect away from auth/splash pages if already logged in and user data is available
       if (isLoggedIn && isAuthRoute && currentUserState.valueOrNull != null) {
         final role = currentUserState.valueOrNull!.userRole;
         if (role == UserRole.admin) return '/admin-dashboard';
-        if (role == UserRole.guide) return '/guide-dashboard';
         return '/participant-dashboard';
       }
 
       return null;
     },
     routes: [
+      // ── Splash Route ──
+      GoRoute(
+        path: '/splash',
+        name: RouteNames.splash,
+        builder: (context, state) => const SplashScreen(),
+      ),
+
       // ── Auth Routes ──
       GoRoute(
         path: '/login',
@@ -71,6 +86,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         path: '/forgot-password',
         name: RouteNames.forgotPassword,
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
+        path: '/profile',
+        name: RouteNames.profile,
+        builder: (context, state) => const ProfileScreen(),
       ),
 
       // ── Dashboard Routes ──

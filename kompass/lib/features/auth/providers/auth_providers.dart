@@ -27,6 +27,10 @@ Future<UserModel?> currentUser(CurrentUserRef ref) async {
   return ref.watch(authRepositoryProvider).getUserData(authUser.uid);
 }
 
+final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
+  return ref.watch(authRepositoryProvider).watchAllUsers();
+});
+
 @riverpod
 class AuthController extends _$AuthController {
   @override
@@ -34,15 +38,15 @@ class AuthController extends _$AuthController {
 
   Future<void> signIn(String email, String password) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => 
-      ref.read(authRepositoryProvider).signInWithEmailAndPassword(email, password)
+    state = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).signInWithEmailAndPassword(email, password),
     );
   }
 
   Future<void> register(String name, String email, String password, String role) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => 
-      ref.read(authRepositoryProvider).registerWithEmailAndPassword(name, email, password, role)
+    state = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).registerWithEmailAndPassword(name, email, password, role),
     );
   }
 
@@ -53,8 +57,16 @@ class AuthController extends _$AuthController {
 
   Future<void> sendPasswordResetEmail(String email) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() => 
-      ref.read(authRepositoryProvider).sendPasswordResetEmail(email)
+    state = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).sendPasswordResetEmail(email),
     );
+  }
+
+  Future<void> updateProfile(UserModel updatedUser) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await ref.read(authRepositoryProvider).updateUserProfile(updatedUser);
+      ref.invalidate(currentUserProvider);
+    });
   }
 }

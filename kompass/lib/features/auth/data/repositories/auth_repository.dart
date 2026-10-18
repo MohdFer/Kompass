@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/constants/firestore_constants.dart';
 import '../../../../core/errors/app_exception.dart';
+import '../../../../services/storage/hive_service.dart';
 import '../models/user_model.dart';
 
 abstract class AuthRepository {
@@ -12,6 +13,8 @@ abstract class AuthRepository {
   Future<void> signOut();
   Future<void> sendPasswordResetEmail(String email);
   Future<UserModel?> getUserData(String uid);
+  Future<void> updateUserProfile(UserModel user);
+  Stream<List<UserModel>> watchAllUsers();
 }
 
 class FirebaseAuthRepository implements AuthRepository {
@@ -33,15 +36,17 @@ class FirebaseAuthRepository implements AuthRepository {
         email: email,
         password: password,
       );
-      
+
       final userData = await getUserData(userCredential.user!.uid);
       if (userData == null) {
         throw const DatabaseException('User data not found in database.');
       }
+      await HiveService.instance.cacheUserProfile(userData.toJson());
       return userData;
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Authentication failed');
     } catch (e) {
+      if (e is AppException) rethrow;
       throw const DatabaseException('An unexpected error occurred during sign in.');
     }
   }
@@ -67,6 +72,7 @@ class FirebaseAuthRepository implements AuthRepository {
           .doc(userModel.userId)
           .set(userModel.toFirestore());
 
+      await HiveService.instance.cacheUserProfile(userModel.toJson());
       return userModel;
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Registration failed');
@@ -77,6 +83,7 @@ class FirebaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    await HiveService.instance.clearAll();
     await _auth.signOut();
   }
 
@@ -94,11 +101,41 @@ class FirebaseAuthRepository implements AuthRepository {
     try {
       final doc = await _firestore.collection(FirestoreConstants.usersCollection).doc(uid).get();
       if (doc.exists && doc.data() != null) {
-        return UserModel.fromFirestore(doc);
+        final model = UserModel.fromFirestore(doc);
+        if (_auth.currentUser?.uid == uid) {
+          await HiveService.instance.cacheUserProfile(model.toJson());
+        }
+        return model;
       }
       return null;
     } catch (e) {
+      final cached = HiveService.instance.getCachedUserProfile();
+      if (cached != null && cached['userId'] == uid) {
+        return UserModel.fromJson(Map<String, dynamic>.from(cached));
+      }
       throw const DatabaseException('Failed to fetch user data');
     }
+  }
+
+  @override
+  Future<void> updateUserProfile(UserModel user) async {
+    try {
+      await _firestore
+          .collection(FirestoreConstants.usersCollection)
+          .doc(user.userId)
+          .update(user.toFirestore());
+      await HiveService.instance.cacheUserProfile(user.toJson());
+    } catch (e) {
+      throw DatabaseException('Failed to update profile: $e');
+    }
+  }
+
+  @override
+  Stream<List<UserModel>> watchAllUsers() {
+    return _firestore
+        .collection(FirestoreConstants.usersCollection)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map(UserModel.fromFirestore).toList());
   }
 }

@@ -2,6 +2,7 @@
 library;
 
 import 'package:flutter/material.dart';
+import '../utils/app_toast.dart';
 
 extension ContextExtensions on BuildContext {
   /// Access the current theme.
@@ -22,16 +23,33 @@ extension ContextExtensions on BuildContext {
   /// Screen height.
   double get screenHeight => screenSize.height;
 
-  /// Show a SnackBar with a message.
+  /// Show a toast with a message (compat wrapper using AppToast).
   void showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(this).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? colorScheme.error : colorScheme.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+    if (isError) {
+      AppToast.showError(message, context: this);
+    } else {
+      AppToast.showSuccess(message, context: this);
+    }
+  }
+
+  /// Show success toast.
+  void showSuccessToast(String message, {String? title}) {
+    AppToast.showSuccess(message, context: this, title: title);
+  }
+
+  /// Show error toast.
+  void showErrorToast(String message, {String? title}) {
+    AppToast.showError(message, context: this, title: title);
+  }
+
+  /// Show warning toast.
+  void showWarningToast(String message, {String? title}) {
+    AppToast.showWarning(message, context: this, title: title);
+  }
+
+  /// Show info toast.
+  void showInfoToast(String message, {String? title}) {
+    AppToast.showInfo(message, context: this, title: title);
   }
 
   /// Show a loading dialog.

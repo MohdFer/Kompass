@@ -16,7 +16,11 @@ abstract class TourModel with _$TourModel {
     DateTime? endDate,
     required String guideId,
     @Default([]) List<String> participantIds,
+    @Default([]) List<String> invitedUserIds,
+    @Default([]) List<String> pendingRequestUserIds,
     @Default('Draft') String status,
+    @Default(true) bool isPublic,
+    @Default(false) bool requireJoinApproval,
     DateTime? createdAt,
   }) = _TourModel;
 

@@ -44,4 +44,27 @@ class AttendanceRepository {
         .map((snapshot) =>
             snapshot.docs.map(AttendanceModel.fromFirestore).toList());
   }
+
+  /// Clear all attendance records for a tour.
+  Future<void> clearAttendance(String tourId) async {
+    try {
+      final snapshot = await _attendanceRef(tourId).get();
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      throw DatabaseException('Failed to clear attendance logs: $e');
+    }
+  }
+
+  /// Delete a single attendance record.
+  Future<void> deleteAttendanceRecord(String tourId, String attendanceId) async {
+    try {
+      await _attendanceRef(tourId).doc(attendanceId).delete();
+    } catch (e) {
+      throw DatabaseException('Failed to delete attendance record: $e');
+    }
+  }
 }

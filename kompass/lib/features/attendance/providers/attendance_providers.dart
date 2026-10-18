@@ -48,6 +48,31 @@ class AttendanceController extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> clearAttendance(String tourId) async {
+    try {
+      state = const AsyncValue.loading();
+      await ref.read(attendanceRepositoryProvider).clearAttendance(tourId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteRecord(String tourId, String attendanceId) async {
+    try {
+      state = const AsyncValue.loading();
+      await ref
+          .read(attendanceRepositoryProvider)
+          .deleteAttendanceRecord(tourId, attendanceId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
     }
   }
 }

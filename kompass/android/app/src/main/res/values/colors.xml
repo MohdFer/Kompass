@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches AppColors.background (Lumora pure black) -->
+    <color name="splash_bg">#000000</color>
+</resources>

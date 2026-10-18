@@ -76,24 +76,19 @@ The following items are explicitly out of scope for this project:
 - AI Model Training & Evaluation Reports
 - Phase 3 Documentation
 
-## 7. Key Milestones
+## 7. Key Milestones & Academic Timeline
 
-| Milestone | Target Date | Phase | Description |
-|-----------|-------------|-------|-------------|
-| Project Kickoff | Month 1 | Phase 1 | Initial planning, requirements gathering, and environment setup |
-| Phase 1 Requirements Complete | Month 1 | Phase 1 | Finalization of SRS and architecture design |
-| Phase 1 UI/UX Design Complete | Month 2 | Phase 1 | Wireframes and high-fidelity mockups approved |
-| Phase 1 Core Backend Ready | Month 2 | Phase 1 | Firebase structured and integrated with app |
-| Phase 1 Feature Complete | Month 3 | Phase 1 | All core CRUD, messaging, and basic map features integrated |
-| Phase 1 Testing & Demo | Month 4 | Phase 1 | Mini Project Demonstration |
-| Phase 2 Geofencing Engine Complete | Month 6 | Phase 2 | Custom hybrid geofencing algorithms active |
-| Phase 2 Bluetooth Mesh Prototype | Month 7 | Phase 2 | Basic offline P2P message relay working |
-| Phase 2 WebRTC Integration | Month 8 | Phase 2 | Group and 1-to-1 voice calling active |
-| Phase 2 Integration Testing | Month 9 | Phase 2 | Offline sync and end-to-end testing complete |
-| Phase 2 Field Testing & Demo | Month 10 | Phase 2 | Main Project Demonstration |
-| Phase 3 AI Model Training Complete | Month 11 | Phase 3 | Predictive models trained and validated |
-| Phase 3 On-Device Integration | Month 12 | Phase 3 | TFLite models and LLM APIs integrated into mobile client |
-| Phase 3 UAT & Final Demo | Month 13 | Phase 3 | UAT testing and final extended research demonstration |
+This project follows an accelerated 6-month development schedule, integrated with milestones for publishing the research in an academic journal or conference.
+
+| Target Date | Phase | Description | Academic Milestone |
+|-------------|-------|-------------|--------------------|
+| **Sep 30, 2026** | Phase 1 | UI/UX designs and core Firebase backend deployed | Literature Review ongoing |
+| **Oct 15, 2026** | Phase 1 | **Phase 1 Complete:** Core app functional (Tour CRUD, Attendance, Maps) | First draft of Introduction and Literature Review complete |
+| **Nov 30, 2026** | Phase 2 | Custom Geofencing engine complete and integrated | Draft System Architecture |
+| **Dec 31, 2026** | Phase 2 | **Phase 2 Complete:** Offline Bluetooth Mesh and WebRTC voice integrated | Draft Methodology section |
+| **Feb 15, 2027** | Phase 3 | AI Models (Crowd prediction, ETA) and Chatbot integrated | Prepare testing protocols |
+| **Feb 28, 2027** | Phase 3 | **Phase 3 Complete:** All field testing and UAT finished | Collect data and results |
+| **Mar 16, 2027** | Final | Final polish and project demonstration ready | **Final paper submitted to target journal/conference** |
 
 ## 8. Project Team & Roles
 

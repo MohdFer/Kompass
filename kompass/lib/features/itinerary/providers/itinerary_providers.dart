@@ -16,26 +16,20 @@ Stream<List<ItineraryModel>> tourItineraries(TourItinerariesRef ref, String tour
   return ref.watch(itineraryRepositoryProvider).watchItineraries(tourId);
 }
 
-@riverpod
+@Riverpod(keepAlive: true)
 class ItineraryController extends _$ItineraryController {
   @override
-  FutureOr<void> build() {}
+  void build() {}
 
-  Future<void> createItinerary(String tourId, ItineraryModel itinerary) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() =>
-        ref.read(itineraryRepositoryProvider).createItinerary(tourId, itinerary));
+  Future<void> createItinerary(String tourId, ItineraryModel itinerary) {
+    return ref.read(itineraryRepositoryProvider).createItinerary(tourId, itinerary);
   }
 
-  Future<void> updateItinerary(String tourId, ItineraryModel itinerary) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() =>
-        ref.read(itineraryRepositoryProvider).updateItinerary(tourId, itinerary));
+  Future<void> updateItinerary(String tourId, ItineraryModel itinerary) {
+    return ref.read(itineraryRepositoryProvider).updateItinerary(tourId, itinerary);
   }
 
-  Future<void> deleteItinerary(String tourId, String itineraryId) async {
-    state = const AsyncValue.loading();
-    state = await AsyncValue.guard(() =>
-        ref.read(itineraryRepositoryProvider).deleteItinerary(tourId, itineraryId));
+  Future<void> deleteItinerary(String tourId, String itineraryId) {
+    return ref.read(itineraryRepositoryProvider).deleteItinerary(tourId, itineraryId);
   }
 }

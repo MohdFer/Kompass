@@ -28,7 +28,11 @@ mixin _$TourModel {
   DateTime? get endDate => throw _privateConstructorUsedError;
   String get guideId => throw _privateConstructorUsedError;
   List<String> get participantIds => throw _privateConstructorUsedError;
+  List<String> get invitedUserIds => throw _privateConstructorUsedError;
+  List<String> get pendingRequestUserIds => throw _privateConstructorUsedError;
   String get status => throw _privateConstructorUsedError;
+  bool get isPublic => throw _privateConstructorUsedError;
+  bool get requireJoinApproval => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
 
   /// Serializes this TourModel to a JSON map.
@@ -54,7 +58,11 @@ abstract class $TourModelCopyWith<$Res> {
     DateTime? endDate,
     String guideId,
     List<String> participantIds,
+    List<String> invitedUserIds,
+    List<String> pendingRequestUserIds,
     String status,
+    bool isPublic,
+    bool requireJoinApproval,
     DateTime? createdAt,
   });
 }
@@ -81,7 +89,11 @@ class _$TourModelCopyWithImpl<$Res, $Val extends TourModel>
     Object? endDate = freezed,
     Object? guideId = null,
     Object? participantIds = null,
+    Object? invitedUserIds = null,
+    Object? pendingRequestUserIds = null,
     Object? status = null,
+    Object? isPublic = null,
+    Object? requireJoinApproval = null,
     Object? createdAt = freezed,
   }) {
     return _then(
@@ -114,10 +126,26 @@ class _$TourModelCopyWithImpl<$Res, $Val extends TourModel>
                 ? _value.participantIds
                 : participantIds // ignore: cast_nullable_to_non_nullable
                       as List<String>,
+            invitedUserIds: null == invitedUserIds
+                ? _value.invitedUserIds
+                : invitedUserIds // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
+            pendingRequestUserIds: null == pendingRequestUserIds
+                ? _value.pendingRequestUserIds
+                : pendingRequestUserIds // ignore: cast_nullable_to_non_nullable
+                      as List<String>,
             status: null == status
                 ? _value.status
                 : status // ignore: cast_nullable_to_non_nullable
                       as String,
+            isPublic: null == isPublic
+                ? _value.isPublic
+                : isPublic // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            requireJoinApproval: null == requireJoinApproval
+                ? _value.requireJoinApproval
+                : requireJoinApproval // ignore: cast_nullable_to_non_nullable
+                      as bool,
             createdAt: freezed == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -145,7 +173,11 @@ abstract class _$$TourModelImplCopyWith<$Res>
     DateTime? endDate,
     String guideId,
     List<String> participantIds,
+    List<String> invitedUserIds,
+    List<String> pendingRequestUserIds,
     String status,
+    bool isPublic,
+    bool requireJoinApproval,
     DateTime? createdAt,
   });
 }
@@ -171,7 +203,11 @@ class __$$TourModelImplCopyWithImpl<$Res>
     Object? endDate = freezed,
     Object? guideId = null,
     Object? participantIds = null,
+    Object? invitedUserIds = null,
+    Object? pendingRequestUserIds = null,
     Object? status = null,
+    Object? isPublic = null,
+    Object? requireJoinApproval = null,
     Object? createdAt = freezed,
   }) {
     return _then(
@@ -204,10 +240,26 @@ class __$$TourModelImplCopyWithImpl<$Res>
             ? _value._participantIds
             : participantIds // ignore: cast_nullable_to_non_nullable
                   as List<String>,
+        invitedUserIds: null == invitedUserIds
+            ? _value._invitedUserIds
+            : invitedUserIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
+        pendingRequestUserIds: null == pendingRequestUserIds
+            ? _value._pendingRequestUserIds
+            : pendingRequestUserIds // ignore: cast_nullable_to_non_nullable
+                  as List<String>,
         status: null == status
             ? _value.status
             : status // ignore: cast_nullable_to_non_nullable
                   as String,
+        isPublic: null == isPublic
+            ? _value.isPublic
+            : isPublic // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        requireJoinApproval: null == requireJoinApproval
+            ? _value.requireJoinApproval
+            : requireJoinApproval // ignore: cast_nullable_to_non_nullable
+                  as bool,
         createdAt: freezed == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -228,9 +280,15 @@ class _$TourModelImpl extends _TourModel {
     this.endDate,
     required this.guideId,
     final List<String> participantIds = const [],
+    final List<String> invitedUserIds = const [],
+    final List<String> pendingRequestUserIds = const [],
     this.status = 'Draft',
+    this.isPublic = true,
+    this.requireJoinApproval = false,
     this.createdAt,
   }) : _participantIds = participantIds,
+       _invitedUserIds = invitedUserIds,
+       _pendingRequestUserIds = pendingRequestUserIds,
        super._();
 
   factory _$TourModelImpl.fromJson(Map<String, dynamic> json) =>
@@ -258,15 +316,40 @@ class _$TourModelImpl extends _TourModel {
     return EqualUnmodifiableListView(_participantIds);
   }
 
+  final List<String> _invitedUserIds;
+  @override
+  @JsonKey()
+  List<String> get invitedUserIds {
+    if (_invitedUserIds is EqualUnmodifiableListView) return _invitedUserIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_invitedUserIds);
+  }
+
+  final List<String> _pendingRequestUserIds;
+  @override
+  @JsonKey()
+  List<String> get pendingRequestUserIds {
+    if (_pendingRequestUserIds is EqualUnmodifiableListView)
+      return _pendingRequestUserIds;
+    // ignore: implicit_dynamic_type
+    return EqualUnmodifiableListView(_pendingRequestUserIds);
+  }
+
   @override
   @JsonKey()
   final String status;
+  @override
+  @JsonKey()
+  final bool isPublic;
+  @override
+  @JsonKey()
+  final bool requireJoinApproval;
   @override
   final DateTime? createdAt;
 
   @override
   String toString() {
-    return 'TourModel(tourId: $tourId, name: $name, description: $description, startDate: $startDate, endDate: $endDate, guideId: $guideId, participantIds: $participantIds, status: $status, createdAt: $createdAt)';
+    return 'TourModel(tourId: $tourId, name: $name, description: $description, startDate: $startDate, endDate: $endDate, guideId: $guideId, participantIds: $participantIds, invitedUserIds: $invitedUserIds, pendingRequestUserIds: $pendingRequestUserIds, status: $status, isPublic: $isPublic, requireJoinApproval: $requireJoinApproval, createdAt: $createdAt)';
   }
 
   @override
@@ -286,7 +369,19 @@ class _$TourModelImpl extends _TourModel {
               other._participantIds,
               _participantIds,
             ) &&
+            const DeepCollectionEquality().equals(
+              other._invitedUserIds,
+              _invitedUserIds,
+            ) &&
+            const DeepCollectionEquality().equals(
+              other._pendingRequestUserIds,
+              _pendingRequestUserIds,
+            ) &&
             (identical(other.status, status) || other.status == status) &&
+            (identical(other.isPublic, isPublic) ||
+                other.isPublic == isPublic) &&
+            (identical(other.requireJoinApproval, requireJoinApproval) ||
+                other.requireJoinApproval == requireJoinApproval) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -302,7 +397,11 @@ class _$TourModelImpl extends _TourModel {
     endDate,
     guideId,
     const DeepCollectionEquality().hash(_participantIds),
+    const DeepCollectionEquality().hash(_invitedUserIds),
+    const DeepCollectionEquality().hash(_pendingRequestUserIds),
     status,
+    isPublic,
+    requireJoinApproval,
     createdAt,
   );
 
@@ -329,7 +428,11 @@ abstract class _TourModel extends TourModel {
     final DateTime? endDate,
     required final String guideId,
     final List<String> participantIds,
+    final List<String> invitedUserIds,
+    final List<String> pendingRequestUserIds,
     final String status,
+    final bool isPublic,
+    final bool requireJoinApproval,
     final DateTime? createdAt,
   }) = _$TourModelImpl;
   const _TourModel._() : super._();
@@ -352,7 +455,15 @@ abstract class _TourModel extends TourModel {
   @override
   List<String> get participantIds;
   @override
+  List<String> get invitedUserIds;
+  @override
+  List<String> get pendingRequestUserIds;
+  @override
   String get status;
+  @override
+  bool get isPublic;
+  @override
+  bool get requireJoinApproval;
   @override
   DateTime? get createdAt;
 

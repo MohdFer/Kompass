@@ -2,10 +2,14 @@
 class RouteNames {
   RouteNames._();
 
-  // Auth
+  // Splash
+  static const String splash = 'splash';
+
+  // Auth & Profile
   static const String login = 'login';
   static const String register = 'register';
   static const String forgotPassword = 'forgot-password';
+  static const String profile = 'profile';
 
   // Dashboards
   static const String adminDashboard = 'admin-dashboard';

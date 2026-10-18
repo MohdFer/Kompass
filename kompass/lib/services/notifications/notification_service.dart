@@ -1,55 +1,182 @@
+import 'dart:async';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 
-/// Service for handling Firebase Cloud Messaging push notifications.
+/// Service for handling push notifications & local device notification alerts.
 class NotificationService {
   NotificationService._();
   static final instance = NotificationService._();
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
-  /// Initialize FCM and request permissions.
+  final StreamController<RemoteMessage> _foregroundMessagesController =
+      StreamController<RemoteMessage>.broadcast();
+
+  /// Stream of foreground notifications for UI banners.
+  Stream<RemoteMessage> get foregroundMessages =>
+      _foregroundMessagesController.stream;
+
+  String? _lastOpenedTourId;
+  String? get lastOpenedTourId => _lastOpenedTourId;
+
+  void Function(String tourId)? onNotificationTapCallback;
+
+  static const AndroidNotificationChannel _chatChannel =
+      AndroidNotificationChannel(
+    'kompass_chat_channel',
+    'KOMPASS Expedition Radio',
+    description: 'Notifications for tour chat messages and group alerts',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+  );
+
+  /// Initialize FCM and local notification alerts with full Android 13+ support.
   Future<void> initialize() async {
-    // Request notification permissions
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      criticalAlert: true, // For SOS alerts
+    // 1. Request Android 13+ system notification permission
+    if (!kIsWeb) {
+      try {
+        if (await Permission.notification.isDenied) {
+          await Permission.notification.request();
+        }
+      } catch (e) {
+        debugPrint('System notification permission request skipped: $e');
+      }
+    }
+
+    // 2. Initialize FlutterLocalNotifications for device-level alerts
+    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const initSettings = InitializationSettings(android: androidInit);
+
+    try {
+      await _localNotifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          final payload = response.payload;
+          if (payload != null && payload.isNotEmpty) {
+            _lastOpenedTourId = payload;
+            onNotificationTapCallback?.call(payload);
+          }
+        },
+      );
+
+      // Create high-priority notification channel on Android
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.createNotificationChannel(_chatChannel);
+    } catch (e) {
+      debugPrint('Local notifications init error: $e');
+    }
+
+    // 3. Request FCM Permissions
+    try {
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        criticalAlert: true,
+      );
+      debugPrint('FCM Permission status: ${settings.authorizationStatus}');
+
+      // Enable heads-up alerts while in foreground
+      await _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (!kIsWeb) {
+        final token = await _messaging.getToken();
+        debugPrint('FCM Token: $token');
+      }
+
+      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    } catch (e) {
+      debugPrint('FCM init error: $e');
+    }
+  }
+
+  /// Show an immediate high-priority local notification alert on the device.
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'kompass_chat_channel',
+      'KOMPASS Expedition Radio',
+      channelDescription:
+          'Notifications for tour chat messages and group alerts',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      icon: '@mipmap/ic_launcher',
     );
 
-    debugPrint('FCM Permission: ${settings.authorizationStatus}');
-
-    // Get FCM token for this device
-    final token = await _messaging.getToken();
-    debugPrint('FCM Token: $token');
-
-    // Listen for foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
-
-    // Handle notification taps when app is in background
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    const details = NotificationDetails(android: androidDetails);
+    try {
+      await _localNotifications.show(id, title, body, details, payload: payload);
+    } catch (e) {
+      debugPrint('Error showing local notification: $e');
+    }
   }
 
   /// Handle messages received while app is in foreground.
   void _handleForegroundMessage(RemoteMessage message) {
-    debugPrint('Foreground message: ${message.notification?.title}');
-    // TODO: Show in-app notification banner
+    debugPrint('Foreground FCM message: ${message.notification?.title}');
+    final String title = message.notification?.title ??
+        message.data['title']?.toString() ??
+        'KOMPASS Chat';
+    final String body =
+        message.notification?.body ?? message.data['body']?.toString() ?? '';
+    final String? tourId = message.data['tourId']?.toString();
+
+    if (body.isNotEmpty) {
+      showNotification(
+        id: message.hashCode,
+        title: title,
+        body: body,
+        payload: tourId,
+      );
+    }
+    _foregroundMessagesController.add(message);
   }
 
   /// Handle notification tap that opens the app from background.
   void _handleNotificationTap(RemoteMessage message) {
     debugPrint('Notification tap: ${message.data}');
-    // TODO: Navigate to relevant screen based on message data
+    final tourId = message.data['tourId'] as String?;
+    if (tourId != null && tourId.isNotEmpty) {
+      _lastOpenedTourId = tourId;
+      onNotificationTapCallback?.call(tourId);
+    }
   }
 
   /// Subscribe to a topic (e.g., tour-specific notifications).
   Future<void> subscribeToTour(String tourId) async {
-    await _messaging.subscribeToTopic('tour_$tourId');
+    if (kIsWeb) return;
+    try {
+      await _messaging.subscribeToTopic('tour_$tourId');
+    } catch (e) {
+      debugPrint('FCM subscribeToTopic error: $e');
+    }
   }
 
   /// Unsubscribe from a tour topic.
   Future<void> unsubscribeFromTour(String tourId) async {
-    await _messaging.unsubscribeFromTopic('tour_$tourId');
+    if (kIsWeb) return;
+    try {
+      await _messaging.unsubscribeFromTopic('tour_$tourId');
+    } catch (e) {
+      debugPrint('FCM unsubscribeFromTopic error: $e');
+    }
   }
 }

@@ -6,6 +6,7 @@ import '../../../../core/widgets/kompass_loading.dart';
 import '../../../../core/widgets/kompass_empty_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../core/enums/user_role.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../providers/messaging_providers.dart';
@@ -21,7 +22,7 @@ class AnnouncementsScreen extends ConsumerWidget {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('New Announcement'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -40,26 +41,43 @@ class AnnouncementsScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
+              final title = titleController.text.trim();
+              final msg = messageController.text.trim();
+              if (title.isEmpty || msg.isEmpty) {
+                AppToast.showWarning('Please enter both a title and message.');
+                return;
+              }
+
               final user = ref.read(currentUserProvider).value;
               final authUser = ref.read(authStateChangesProvider).value;
-              if (authUser == null || titleController.text.isEmpty || messageController.text.isEmpty) return;
+              if (authUser == null) {
+                AppToast.showError('User session expired. Please sign in again.');
+                return;
+              }
 
               final announcement = AnnouncementModel(
                 announcementId: '',
                 tourId: tourId,
-                title: titleController.text,
-                message: messageController.text,
+                title: title,
+                message: msg,
                 createdBy: authUser.uid,
                 createdByName: user?.name ?? 'Guide',
               );
 
-              await ref.read(announcementRepositoryProvider).createAnnouncement(tourId, announcement);
-              if (context.mounted) Navigator.pop(context);
+              Navigator.pop(dialogContext);
+              try {
+                await ref
+                    .read(announcementRepositoryProvider)
+                    .createAnnouncement(tourId, announcement);
+                AppToast.showSuccess('Announcement posted successfully!');
+              } catch (e) {
+                AppToast.showError('Failed to post announcement: $e');
+              }
             },
             child: const Text('Post'),
           ),

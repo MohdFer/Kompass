@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/widgets/kompass_app_bar.dart';
-import '../../../../core/widgets/kompass_loading.dart';
-import '../../../../core/widgets/kompass_empty_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_toast.dart';
+import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/widgets/kompass_app_bar.dart';
+import '../../../../core/widgets/kompass_empty_state.dart';
+import '../../../../core/widgets/kompass_loading.dart';
+import '../../../../services/notifications/chat_notification_service.dart';
 import '../../../auth/providers/auth_providers.dart';
-import '../../providers/messaging_providers.dart';
 import '../../data/models/message_model.dart';
+import '../../providers/messaging_providers.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({required this.tourId, super.key});
@@ -21,7 +24,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    ChatNotificationService.instance.setActiveChatTourId(widget.tourId);
+  }
+
+  @override
   void dispose() {
+    ChatNotificationService.instance.setActiveChatTourId(null);
     _controller.dispose();
     super.dispose();
   }
@@ -47,9 +57,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       await ref.read(messageRepositoryProvider).sendMessage(widget.tourId, message);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send message: $e')),
-        );
+        AppToast.showError('Failed to send message: $e', context: context);
       }
     }
   }
@@ -88,28 +96,63 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             ),
           ),
           SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+              decoration: const BoxDecoration(
+                color: AppColors.background,
+                border: Border(
+                  top: BorderSide(color: AppColors.border, width: 0.5),
+                ),
+              ),
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _controller,
+                      style: AppTextStyles.bodyMedium.copyWith(
+                        color: AppColors.textPrimary,
+                      ),
+                      cursorColor: AppColors.primaryNeon,
                       decoration: InputDecoration(
                         hintText: 'Type a message...',
+                        hintStyle: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                        filled: true,
+                        fillColor: AppColors.surface,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: AppColors.border),
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: const BorderSide(
+                            color: AppColors.primaryNeon,
+                            width: 1.5,
+                          ),
+                        ),
                       ),
                       onSubmitted: (_) => _sendMessage(),
                     ),
                   ),
                   const SizedBox(width: 8),
                   CircleAvatar(
-                    backgroundColor: AppColors.primaryGold,
+                    radius: 22,
+                    backgroundColor: AppColors.primaryNeon,
                     child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white),
+                      icon: const Icon(
+                        Icons.send_rounded,
+                        color: AppColors.textOnPrimary,
+                        size: 20,
+                      ),
                       onPressed: _sendMessage,
                     ),
                   ),
@@ -135,33 +178,60 @@ class _MessageBubble extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+        ),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.primaryGold : AppColors.surface,
+          color: isMe ? AppColors.primaryNeon : AppColors.surface,
           borderRadius: BorderRadius.circular(16).copyWith(
-            bottomRight: isMe ? const Radius.circular(0) : null,
-            bottomLeft: !isMe ? const Radius.circular(0) : null,
+            bottomRight: isMe ? const Radius.circular(2) : null,
+            bottomLeft: !isMe ? const Radius.circular(2) : null,
           ),
-          border: isMe ? null : Border.all(color: AppColors.sandDark),
+          border: isMe ? null : Border.all(color: AppColors.border),
+          boxShadow: [
+            if (isMe)
+              BoxShadow(
+                color: AppColors.primaryNeon.withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+          ],
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!isMe)
+            if (!isMe) ...[
               Text(
-                message.senderName,
+                message.senderName.isNotEmpty ? message.senderName : 'Explorer',
                 style: AppTextStyles.labelMedium.copyWith(
-                  color: AppColors.primaryGold,
+                  color: AppColors.primaryNeon,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-            if (!isMe) const SizedBox(height: 4),
+              const SizedBox(height: 4),
+            ],
             Text(
               message.message,
               style: AppTextStyles.bodyMedium.copyWith(
-                color: isMe ? Colors.white : AppColors.textPrimary,
+                color: isMe ? AppColors.textOnPrimary : AppColors.textPrimary,
+                fontWeight: isMe ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
+            if (message.timestamp != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                DateFormatter.formatTime(message.timestamp!),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: isMe ? FontWeight.w600 : FontWeight.normal,
+                  color: isMe
+                      ? AppColors.textOnPrimary.withValues(alpha: 0.65)
+                      : AppColors.textSecondary,
+                ),
+              ),
+            ],
           ],
         ),
       ),

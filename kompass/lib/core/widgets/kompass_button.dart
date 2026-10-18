@@ -12,6 +12,7 @@ class KompassButton extends StatelessWidget {
     this.isOutlined = false,
     this.isDestructive = false,
     this.fullWidth = true,
+    this.padding,
   });
 
   final String label;
@@ -21,38 +22,46 @@ class KompassButton extends StatelessWidget {
   final bool isOutlined;
   final bool isDestructive;
   final bool fullWidth;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) {
     final child = isLoading
-      ? const SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(
-            strokeWidth: 2.5,
-            color: AppColors.textOnPrimary,
-          ),
-        )
-      : Row(
-          mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (icon != null) ...[Icon(icon, size: 22), const SizedBox(width: 10)],
-            Text(label),
-          ],
-        );
+        ? const SizedBox(
+            width: 24,
+            height: 24,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.5,
+              color: AppColors.textOnPrimary,
+            ),
+          )
+        : FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: fullWidth ? MainAxisSize.max : MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 20),
+                  const SizedBox(width: 8),
+                ],
+                Text(label, maxLines: 1),
+              ],
+            ),
+          );
 
     if (isOutlined) {
       return SizedBox(
         width: fullWidth ? double.infinity : null,
         child: OutlinedButton(
           onPressed: isLoading ? null : onPressed,
-          style: isDestructive
-            ? OutlinedButton.styleFrom(
-                foregroundColor: AppColors.error,
-                side: const BorderSide(color: AppColors.error, width: 2),
-              )
-            : null,
+          style: OutlinedButton.styleFrom(
+            padding: padding,
+            foregroundColor: isDestructive ? AppColors.error : null,
+            side: isDestructive
+                ? const BorderSide(color: AppColors.error, width: 2)
+                : null,
+          ),
           child: child,
         ),
       );
@@ -62,11 +71,10 @@ class KompassButton extends StatelessWidget {
       width: fullWidth ? double.infinity : null,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
-        style: isDestructive
-          ? ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            )
-          : null,
+        style: ElevatedButton.styleFrom(
+          padding: padding,
+          backgroundColor: isDestructive ? AppColors.error : null,
+        ),
         child: child,
       ),
     );

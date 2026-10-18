@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/utils/app_toast.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
@@ -34,6 +35,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
           );
       
       if (!ref.read(authControllerProvider).hasError) {
+        AppToast.showSuccess('Password reset link sent to your email.');
         setState(() {
           _emailSent = true;
         });
@@ -51,11 +53,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
       (_, state) {
         state.whenOrNull(
           error: (error, _) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(error.toString()),
-                backgroundColor: AppColors.error,
-              ),
+            AppToast.showError(
+              error.toString(),
+              context: context,
             );
           },
         );

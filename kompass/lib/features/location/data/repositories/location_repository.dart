@@ -8,10 +8,17 @@ class LocationRepository {
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
   Future<void> saveLocation(LocationModel location) async {
+    final docId = location.locationId.isNotEmpty
+        ? location.locationId
+        : '${location.tourId}_${location.userId}';
     await _firestore
         .collection('Locations')
-        .doc(location.locationId)
-        .set(location.toFirestore());
+        .doc(docId)
+        .set(location.toFirestore(), SetOptions(merge: true));
+  }
+
+  Future<void> removeLocation(String locationId) async {
+    await _firestore.collection('Locations').doc(locationId).delete();
   }
 
   Stream<List<LocationModel>> streamLocations() {
