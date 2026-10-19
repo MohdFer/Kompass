@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -169,6 +169,14 @@ class ChatNotificationService {
             if (_activeChatTourId != tour.tourId) {
               AppToast.showInfo(
                 '💬 $sender (${tour.name}): ${message.message}',
+                action: SnackBarAction(
+                  label: 'VIEW',
+                  textColor: const Color(0xFF00E5FF),
+                  onPressed: () {
+                    NotificationService.instance.onNotificationTapCallback
+                        ?.call('chat:${tour.tourId}');
+                  },
+                ),
               );
             }
           }
@@ -235,7 +243,15 @@ class ChatNotificationService {
             AppToast.showError(
               '🚨 CRITICAL SOS: ${alert.userName} sent distress beacon in "${tour.name}"!\n$coordsText • $reason',
               title: 'EMERGENCY DISTRESS BEACON',
-              duration: const Duration(seconds: 8),
+              duration: const Duration(seconds: 10),
+              action: SnackBarAction(
+                label: 'RESPOND',
+                textColor: const Color(0xFFFF5252),
+                onPressed: () {
+                  NotificationService.instance.onNotificationTapCallback
+                      ?.call('sos:${tour.tourId}');
+                },
+              ),
             );
           }
         }
@@ -303,7 +319,15 @@ class ChatNotificationService {
             AppToast.showWarning(
               '📢 BROADCAST (${tour.name}): ${announcement.title}\n${announcement.message}',
               title: 'IMPORTANT TOUR UPDATE',
-              duration: const Duration(seconds: 6),
+              duration: const Duration(seconds: 8),
+              action: SnackBarAction(
+                label: 'VIEW',
+                textColor: const Color(0xFFFFB300),
+                onPressed: () {
+                  NotificationService.instance.onNotificationTapCallback
+                      ?.call('announcement:${tour.tourId}');
+                },
+              ),
             );
           }
         }

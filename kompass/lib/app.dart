@@ -37,6 +37,8 @@ class _KompassAppState extends ConsumerState<KompassApp> {
         } else if (payload.startsWith('chat:')) {
           final tourId = payload.replaceFirst('chat:', '');
           ref.read(goRouterProvider).push('/tours/$tourId/chat');
+        } else if (payload == 'welcome' || payload == 'test') {
+          // Feedback ping from web notification enablement test
         } else {
           ref.read(goRouterProvider).push('/tours/$payload/chat');
         }

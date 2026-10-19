@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -154,6 +153,22 @@ class FcmDirectDispatcher {
               'visibility': 'PUBLIC',
               'default_sound': true,
               'default_vibrate_timings': true,
+            },
+          },
+          'webpush': {
+            'headers': {
+              'Urgency': 'high',
+            },
+            'notification': {
+              'title': title,
+              'body': body,
+              'icon': '/icons/Icon-192.png',
+              'badge': '/favicon.png',
+              'tag': messageId ?? type,
+              if (type == 'sos') 'requireInteraction': 'true',
+            },
+            'fcm_options': {
+              'link': '/#/tours/$tourId/$type',
             },
           },
         },

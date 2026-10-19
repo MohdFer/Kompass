@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,7 +33,11 @@ class AdminDashboardScreen extends ConsumerWidget {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (context.mounted) {
-        AppPermissionService.instance.checkAndPromptBatteryOptimization(context: context);
+        if (kIsWeb) {
+          AppPermissionService.instance.checkAndPromptWebNotifications(context: context);
+        } else {
+          AppPermissionService.instance.checkAndPromptBatteryOptimization(context: context);
+        }
       }
     });
 

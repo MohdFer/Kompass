@@ -23,6 +23,11 @@ dependencies:
   firebase_messaging: ^15.2.3
   flutter_local_notifications: ^18.0.1
 
+  # Web & Network
+  web: ^1.1.1
+  http: ^1.2.2
+  crypto: ^3.0.6
+
   # Maps & Location
   flutter_map: ^7.0.2
   latlong2: ^0.9.1

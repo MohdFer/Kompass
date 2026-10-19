@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'chat_notification_service.dart';
+import 'web_notification_helper.dart';
 
 /// Service for handling push notifications & local device notification alerts.
 class NotificationService {
@@ -51,29 +52,31 @@ class NotificationService {
       }
     }
 
-    // 2. Initialize FlutterLocalNotifications for device-level alerts
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const initSettings = InitializationSettings(android: androidInit);
+    // 2. Initialize FlutterLocalNotifications for device-level alerts (native only)
+    if (!kIsWeb) {
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initSettings = InitializationSettings(android: androidInit);
 
-    try {
-      await _localNotifications.initialize(
-        initSettings,
-        onDidReceiveNotificationResponse: (NotificationResponse response) {
-          final payload = response.payload;
-          if (payload != null && payload.isNotEmpty) {
-            _lastOpenedTourId = payload;
-            onNotificationTapCallback?.call(payload);
-          }
-        },
-      );
+      try {
+        await _localNotifications.initialize(
+          initSettings,
+          onDidReceiveNotificationResponse: (NotificationResponse response) {
+            final payload = response.payload;
+            if (payload != null && payload.isNotEmpty) {
+              _lastOpenedTourId = payload;
+              onNotificationTapCallback?.call(payload);
+            }
+          },
+        );
 
-      // Create high-priority notification channel on Android
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(_chatChannel);
-    } catch (e) {
-      debugPrint('Local notifications init error: $e');
+        // Create high-priority notification channel on Android
+        await _localNotifications
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.createNotificationChannel(_chatChannel);
+      } catch (e) {
+        debugPrint('Local notifications init error: $e');
+      }
     }
 
     // 3. Request FCM Permissions
@@ -98,7 +101,28 @@ class NotificationService {
         debugPrint('FCM Token: $token');
         _messaging.onTokenRefresh.listen((newToken) {
           debugPrint('FCM Token Refreshed: $newToken');
+          final userId = FirebaseAuth.instance.currentUser?.uid;
+          if (userId != null) {
+            saveUserToken(userId);
+          }
         });
+      } else {
+        // On web, if permission is already granted, fetch token & listen for refresh
+        try {
+          if (WebNotificationHelper.permission == WebNotificationPermission.granted) {
+            final token = await _messaging.getToken();
+            debugPrint('Web FCM Token: $token');
+            _messaging.onTokenRefresh.listen((newToken) {
+              debugPrint('Web FCM Token Refreshed: $newToken');
+              final userId = FirebaseAuth.instance.currentUser?.uid;
+              if (userId != null) {
+                saveUserToken(userId);
+              }
+            });
+          }
+        } catch (e) {
+          debugPrint('Web FCM token registration deferred: $e');
+        }
       }
 
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -114,9 +138,40 @@ class NotificationService {
     }
   }
 
+  /// Request web notification permission, register token, and return status
+  Future<bool> requestWebNotificationPermission() async {
+    if (!kIsWeb) return true;
+    try {
+      final perm = await WebNotificationHelper.requestPermission();
+      if (perm == WebNotificationPermission.granted) {
+        try {
+          final token = await _messaging.getToken();
+          if (token != null && token.isNotEmpty) {
+            final userId = FirebaseAuth.instance.currentUser?.uid;
+            if (userId != null) {
+              await saveUserToken(userId);
+            }
+          }
+        } catch (e) {
+          debugPrint('Web token retrieval deferred: $e');
+        }
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error requesting web notification permission: $e');
+      return false;
+    }
+  }
+
+  /// Get current web notification permission status
+  WebNotificationPermission getWebPermissionStatus() {
+    if (!kIsWeb) return WebNotificationPermission.granted;
+    return WebNotificationHelper.permission;
+  }
+
   /// Save device FCM push token to the user document in Firestore so push notifications can reach this user.
   Future<void> saveUserToken(String userId) async {
-    if (kIsWeb) return;
     try {
       final token = await _messaging.getToken();
       if (token != null && token.isNotEmpty) {
@@ -124,6 +179,7 @@ class NotificationService {
           'fcmToken': token,
           'fcmTokens': FieldValue.arrayUnion([token]),
           'lastTokenUpdate': FieldValue.serverTimestamp(),
+          if (kIsWeb) 'webNotificationsEnabled': true,
         }, SetOptions(merge: true));
         debugPrint('Saved FCM token to user document $userId');
       }
@@ -132,14 +188,31 @@ class NotificationService {
     }
   }
 
-  /// Show an immediate high-priority local notification alert on the device.
+  /// Show an immediate high-priority notification alert on the device or web browser.
   Future<void> showNotification({
     required int id,
     required String title,
     required String body,
     String? payload,
   }) async {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      final isEmergency = payload?.startsWith('sos:') ?? false;
+      WebNotificationHelper.playNotificationChime(isEmergency: isEmergency);
+      WebNotificationHelper.showWebNotification(
+        title: title,
+        body: body,
+        tag: id.toString(),
+        payload: payload,
+        requireInteraction: isEmergency,
+        onClick: (p) {
+          if (p != null && p.isNotEmpty) {
+            _lastOpenedTourId = p;
+            onNotificationTapCallback?.call(p);
+          }
+        },
+      );
+      return;
+    }
 
     // Ensure 32-bit signed integer compatibility required by Android NotificationManager
     final int safeId = id.abs() & 0x7FFFFFFF;

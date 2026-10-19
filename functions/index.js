@@ -52,6 +52,21 @@ exports.sendTourChatMessageNotification = onDocumentCreated(
           },
         },
       },
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+        notification: {
+          title: `💬 ${senderName}`,
+          body: messageText,
+          icon: "/icons/Icon-192.png",
+          badge: "/favicon.png",
+          tag: `chat_${event.params.messageId}`,
+        },
+        fcmOptions: {
+          link: `/#/tours/${tourId}/chat`,
+        },
+      },
     };
 
     try {
@@ -94,6 +109,21 @@ exports.sendTourAnnouncementNotification = onDocumentCreated(
           channelId: "kompass_chat_channel",
           sound: "default",
           priority: "max",
+        },
+      },
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+        notification: {
+          title: `📢 ${title}`,
+          body: message,
+          icon: "/icons/Icon-192.png",
+          badge: "/favicon.png",
+          tag: `announcement_${event.params.announcementId}`,
+        },
+        fcmOptions: {
+          link: `/#/tours/${tourId}/announcements`,
         },
       },
     };
@@ -139,6 +169,22 @@ exports.sendTourSOSAlertNotification = onDocumentCreated(
           channelId: "kompass_chat_channel",
           sound: "default",
           priority: "max",
+        },
+      },
+      webpush: {
+        headers: {
+          Urgency: "high",
+        },
+        notification: {
+          title: `🚨 SOS EMERGENCY: ${senderName}`,
+          body: emergencyMsg,
+          icon: "/icons/Icon-192.png",
+          badge: "/favicon.png",
+          requireInteraction: true,
+          tag: `sos_${event.params.alertId}`,
+        },
+        fcmOptions: {
+          link: `/#/tours/${tourId}/sos`,
         },
       },
     };

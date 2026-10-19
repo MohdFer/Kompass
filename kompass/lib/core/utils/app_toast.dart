@@ -107,6 +107,7 @@ class AppToast {
     BuildContext? context,
     String? title,
     Duration? duration,
+    SnackBarAction? action,
   }) {
     show(
       message,
@@ -114,6 +115,7 @@ class AppToast {
       context: context,
       title: title,
       duration: duration ?? const Duration(milliseconds: 3000),
+      action: action,
     );
   }
 
@@ -123,6 +125,7 @@ class AppToast {
     BuildContext? context,
     String? title,
     Duration? duration,
+    SnackBarAction? action,
   }) {
     show(
       message,
@@ -130,6 +133,7 @@ class AppToast {
       context: context,
       title: title,
       duration: duration ?? const Duration(milliseconds: 3500),
+      action: action,
     );
   }
 
@@ -139,6 +143,7 @@ class AppToast {
     BuildContext? context,
     String? title,
     Duration? duration,
+    SnackBarAction? action,
   }) {
     show(
       message,
@@ -146,6 +151,7 @@ class AppToast {
       context: context,
       title: title,
       duration: duration ?? const Duration(milliseconds: 3000),
+      action: action,
     );
   }
 
@@ -155,6 +161,7 @@ class AppToast {
     BuildContext? context,
     String? title,
     Duration? duration,
+    SnackBarAction? action,
   }) {
     show(
       message,
@@ -162,6 +169,7 @@ class AppToast {
       context: context,
       title: title,
       duration: duration ?? const Duration(milliseconds: 2800),
+      action: action,
     );
   }
 

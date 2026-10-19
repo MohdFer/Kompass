@@ -98,6 +98,18 @@
       }
     });
   </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('firebase-messaging-sw.js', { scope: '/' })
+          .then(function (reg) {
+            console.log('KOMPASS Web Push Service Worker registered with scope:', reg.scope);
+          }).catch(function (err) {
+            console.warn('KOMPASS Web Push Service Worker registration skipped:', err);
+          });
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

@@ -5,6 +5,9 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../core/utils/app_toast.dart';
+import '../notifications/notification_service.dart';
+import '../notifications/web_notification_helper.dart';
 import '../storage/hive_service.dart';
 
 /// Service dedicated to handling prompt permission onboarding and GPS service checks.
@@ -16,13 +19,30 @@ class AppPermissionService {
   static const String _batteryDialogKey = 'battery_instruction_shown_v1';
   bool _isGpsDialogShowing = false;
   bool _isBatteryDialogShowing = false;
+  static const String _webNotificationDialogKey = 'web_notification_dialog_shown_v1';
+  bool _isWebNotificationDialogShowing = false;
 
   /// Prompt for all essential permissions on first install and launch:
   /// 1. Notifications (FCM pushes, Expedition Radio, SOS distress alerts)
   /// 2. Location (Real-time tour tracking, Meeting points, Geofencing safety)
   /// 3. Camera (QR attendance check-in)
   Future<void> requestInitialPermissionsPrompt() async {
-    if (kIsWeb) return;
+    if (kIsWeb) {
+      try {
+        final alreadyRequested =
+            HiveService.instance.getSetting<bool>(_firstRunKey) ?? false;
+        if (!alreadyRequested) {
+          final status = NotificationService.instance.getWebPermissionStatus();
+          if (status == WebNotificationPermission.defaultState) {
+            await NotificationService.instance.requestWebNotificationPermission();
+          }
+          await HiveService.instance.saveSetting(_firstRunKey, true);
+        }
+      } catch (e) {
+        debugPrint('Web initial permission prompt error: $e');
+      }
+      return;
+    }
 
     try {
       final alreadyRequested =
@@ -57,6 +77,200 @@ class AppPermissionService {
     } catch (e) {
       debugPrint('AppPermissionService requestInitialPermissionsPrompt error: $e');
     }
+  }
+
+  /// Check and prompt the user on Web with an interactive dialog to enable Web Notifications
+  /// for expedition chat, tour broadcasts, and SOS alerts.
+  Future<void> checkAndPromptWebNotifications({
+    required BuildContext context,
+    bool force = false,
+  }) async {
+    if (!kIsWeb) return;
+
+    final currentStatus = NotificationService.instance.getWebPermissionStatus();
+    if (currentStatus == WebNotificationPermission.granted && !force) return;
+    if (currentStatus == WebNotificationPermission.denied && !force) return;
+
+    final alreadyShown =
+        HiveService.instance.getSetting<bool>(_webNotificationDialogKey) ?? false;
+    if (alreadyShown && !force) return;
+
+    if (!context.mounted || _isWebNotificationDialogShowing) return;
+
+    _isWebNotificationDialogShowing = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (dialogCtx) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: const BorderSide(color: AppColors.primaryGold, width: 1.5),
+          ),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryGold.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.notifications_active_rounded,
+                  color: AppColors.primaryGold,
+                  size: 26,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Enable Web Notifications',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Stay updated promptly! Turn on notifications to receive expedition chat, tour guide broadcasts, and emergency SOS alerts directly in your browser even when this tab is minimized.',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.textSecondary,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildNotificationFeatureRow(
+                        Icons.chat_bubble_outline,
+                        'Expedition Chat',
+                        'Real-time messages from tour members',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildNotificationFeatureRow(
+                        Icons.campaign_outlined,
+                        'Guide Broadcasts',
+                        'Timely itinerary & gathering updates',
+                      ),
+                      const SizedBox(height: 8),
+                      _buildNotificationFeatureRow(
+                        Icons.warning_amber_rounded,
+                        'Emergency SOS',
+                        'Distress signals with GPS coordinates',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogCtx);
+              },
+              child: Text(
+                'Later',
+                style: AppTextStyles.labelMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryGold,
+                foregroundColor: AppColors.background,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              icon: const Icon(Icons.notifications_active, size: 18),
+              label: const Text(
+                'Enable Notifications',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              onPressed: () async {
+                Navigator.pop(dialogCtx);
+                final granted = await NotificationService.instance
+                    .requestWebNotificationPermission();
+                if (granted) {
+                  AppToast.showSuccess(
+                    'Notifications enabled! You will now receive prompt tour alerts.',
+                  );
+                  await NotificationService.instance.showNotification(
+                    id: 9999,
+                    title: '🧭 KOMPASS Notifications Active',
+                    body:
+                        'You are all set to receive timely chat, announcement, and SOS alerts.',
+                    payload: 'welcome',
+                  );
+                } else {
+                  AppToast.showInfo(
+                    'Permission was not granted. You can enable it anytime in your Profile.',
+                  );
+                }
+              },
+            ),
+          ],
+        ),
+      );
+
+      await HiveService.instance.saveSetting(_webNotificationDialogKey, true);
+    } finally {
+      _isWebNotificationDialogShowing = false;
+    }
+  }
+
+  static Widget _buildNotificationFeatureRow(
+    IconData icon,
+    String title,
+    String subtitle,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(icon, size: 20, color: AppColors.primaryGold),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: AppTextStyles.labelMedium.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: AppColors.textSecondary,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   /// Request unrestricted battery usage so push notifications and background listeners are not killed.
@@ -316,7 +530,7 @@ class AppPermissionService {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryGold.withOpacity(0.15),
+                  color: AppColors.primaryGold.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,6 +11,8 @@ import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
 import '../../../../core/widgets/kompass_loading.dart';
+import '../../../../services/notifications/notification_service.dart';
+import '../../../../services/notifications/web_notification_helper.dart';
 import '../../../../services/permissions/app_permission_service.dart';
 import '../../../../services/storage/hive_service.dart';
 import '../../providers/auth_providers.dart';
@@ -298,28 +301,105 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           },
                         ),
                         const Divider(color: AppColors.border, height: 24),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: const Icon(
-                            Icons.battery_charging_full_rounded,
-                            color: AppColors.primaryGold,
-                          ),
-                          title: const Text('Unrestricted Battery Usage'),
-                          subtitle: const Text(
-                            'Ensure instant delivery of background chat, broadcast, and emergency SOS alerts.',
-                          ),
-                          trailing: OutlinedButton(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.primaryGold,
-                              side: const BorderSide(color: AppColors.primaryGold),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            ),
-                            onPressed: () async {
-                              await AppPermissionService.instance.requestUnrestrictedBatteryOptimization();
+                        if (kIsWeb)
+                          Builder(
+                            builder: (context) {
+                              final status = NotificationService.instance.getWebPermissionStatus();
+                              final isGranted = status == WebNotificationPermission.granted;
+                              final isDenied = status == WebNotificationPermission.denied;
+
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: Icon(
+                                  isGranted
+                                      ? Icons.notifications_active_rounded
+                                      : (isDenied
+                                          ? Icons.notifications_off_rounded
+                                          : Icons.notifications_none_rounded),
+                                  color: isGranted
+                                      ? const Color(0xFF00E676)
+                                      : (isDenied
+                                          ? const Color(0xFFFF5252)
+                                          : AppColors.primaryGold),
+                                ),
+                                title: const Text('Web Notifications'),
+                                subtitle: Text(
+                                  isGranted
+                                      ? 'Active & enabled • Prompt alerts for expedition chat, broadcasts, and SOS distress beacons.'
+                                      : (isDenied
+                                          ? 'Blocked in browser settings • Allow notifications in your browser address bar.'
+                                          : 'Turn on notifications to receive prompt alerts even when minimized.'),
+                                ),
+                                trailing: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: isGranted
+                                        ? const Color(0xFF00E676)
+                                        : AppColors.primaryGold,
+                                    side: BorderSide(
+                                      color: isGranted
+                                          ? const Color(0xFF00E676)
+                                          : AppColors.primaryGold,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  ),
+                                  onPressed: () async {
+                                    if (isGranted) {
+                                      await NotificationService.instance.showNotification(
+                                        id: 8888,
+                                        title: '🧭 KOMPASS Notification Test',
+                                        body: 'Web notifications are promptly active and working!',
+                                        payload: 'test',
+                                      );
+                                      AppToast.showSuccess('Test notification dispatched!');
+                                    } else if (isDenied) {
+                                      AppToast.showWarning(
+                                        'Notifications are blocked in your browser. Click the lock/info icon beside the URL in the address bar and set Notifications to "Allow".',
+                                        duration: const Duration(seconds: 6),
+                                      );
+                                    } else {
+                                      final granted = await NotificationService.instance.requestWebNotificationPermission();
+                                      if (mounted) setState(() {});
+                                      if (granted) {
+                                        AppToast.showSuccess('Web notifications enabled successfully!');
+                                        await NotificationService.instance.showNotification(
+                                          id: 8888,
+                                          title: '🧭 KOMPASS Notifications Enabled',
+                                          body: 'You will now receive prompt tour alerts directly on your screen.',
+                                          payload: 'welcome',
+                                        );
+                                      } else {
+                                        AppToast.showInfo('Notification permission was not granted.');
+                                      }
+                                    }
+                                  },
+                                  child: Text(isGranted ? 'Test' : (isDenied ? 'Guide' : 'Enable')),
+                                ),
+                              );
                             },
-                            child: const Text('Configure'),
+                          )
+                        else
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: const Icon(
+                              Icons.battery_charging_full_rounded,
+                              color: AppColors.primaryGold,
+                            ),
+                            title: const Text('Unrestricted Battery Usage'),
+                            subtitle: const Text(
+                              'Ensure instant delivery of background chat, broadcast, and emergency SOS alerts.',
+                            ),
+                            trailing: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.primaryGold,
+                                side: const BorderSide(color: AppColors.primaryGold),
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                              onPressed: () async {
+                                await AppPermissionService.instance.requestUnrestrictedBatteryOptimization();
+                              },
+                              child: const Text('Configure'),
+                            ),
                           ),
-                        ),
                         const SizedBox(height: 16),
                         KompassButton(
                           label: 'Save Changes',

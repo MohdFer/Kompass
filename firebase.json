@@ -34,7 +34,7 @@
         ]
       },
       {
-        "source": "/@(index.html|flutter_bootstrap.js|flutter_service_worker.js|manifest.json|version.json)",
+        "source": "/@(index.html|flutter_bootstrap.js|flutter_service_worker.js|firebase-messaging-sw.js|manifest.json|version.json)",
         "headers": [
           { "key": "Cache-Control", "value": "no-cache" }
         ]
