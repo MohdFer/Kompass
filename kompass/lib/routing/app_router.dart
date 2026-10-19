@@ -27,12 +27,15 @@ import '../features/calling/presentation/screens/tour_voice_room_screen.dart';
 import '../features/calling/presentation/screens/call_screen.dart';
 import 'route_names.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateChangesProvider);
   final currentUserState = ref.watch(currentUserProvider);
   final splashCompleted = ref.watch(splashCompletedProvider);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     debugLogDiagnostics: true,
     redirect: (context, state) {

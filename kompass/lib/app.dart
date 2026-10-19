@@ -4,6 +4,7 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/app_toast.dart';
 import 'features/location/providers/location_providers.dart';
 import 'routing/app_router.dart';
+import 'services/calling/zego_call_service.dart';
 import 'services/notifications/chat_notification_service.dart';
 import 'services/notifications/notification_service.dart';
 import 'services/permissions/app_permission_service.dart';
@@ -20,6 +21,9 @@ class _KompassAppState extends ConsumerState<KompassApp> {
   @override
   void initState() {
     super.initState();
+
+    // Attach root navigator key to ZEGO Call Invitation Service for incoming call dialogs
+    ZegoCallService.instance.setNavigatorKey(rootNavigatorKey);
 
     // Prompt for essential system permissions immediately on initial launch
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -54,6 +58,8 @@ class _KompassAppState extends ConsumerState<KompassApp> {
     ref.watch(chatNotificationCoordinatorProvider);
     // Actively coordinate automatic location tracking for enrolled users within tour timeframe
     ref.watch(tourLocationTrackerCoordinatorProvider);
+    // Actively coordinate ZEGO 1-on-1 VoIP call invitations (ringing & receiving)
+    ref.watch(zegoCallCoordinatorProvider);
 
     final router = ref.watch(goRouterProvider);
 

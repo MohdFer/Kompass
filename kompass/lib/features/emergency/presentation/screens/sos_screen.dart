@@ -20,7 +20,7 @@ import '../../../tour/providers/tour_providers.dart';
 import '../../../../services/notifications/fcm_direct_dispatcher.dart';
 import '../../data/models/sos_alert_model.dart';
 import '../../providers/emergency_providers.dart';
-import '../../../../core/constants/zego_constants.dart';
+import '../../../../services/calling/zego_call_service.dart';
 
 class SOSScreen extends ConsumerWidget {
   const SOSScreen({required this.tourId, super.key});
@@ -245,9 +245,11 @@ class SOSScreen extends ConsumerWidget {
                     icon: const Icon(Icons.phone_in_talk, size: 18),
                     label: const Text('Emergency Voice'),
                     onPressed: () {
-                      final callId = ZegoConstants.sosCallId(alert.alertId);
-                      context.push(
-                        '/call?callId=$callId&targetUserName=${Uri.encodeComponent(alert.userName)}&isVideo=false&isEmergency=true',
+                      ZegoCallService.instance.sendCallInvitation(
+                        context: context,
+                        targetUserId: alert.userId,
+                        targetUserName: alert.userName,
+                        isVideo: false,
                       );
                     },
                   ),
@@ -263,9 +265,11 @@ class SOSScreen extends ConsumerWidget {
                     icon: const Icon(Icons.videocam, size: 18),
                     label: const Text('SOS Video'),
                     onPressed: () {
-                      final callId = ZegoConstants.sosCallId(alert.alertId);
-                      context.push(
-                        '/call?callId=$callId&targetUserName=${Uri.encodeComponent(alert.userName)}&isVideo=true&isEmergency=true',
+                      ZegoCallService.instance.sendCallInvitation(
+                        context: context,
+                        targetUserId: alert.userId,
+                        targetUserName: alert.userName,
+                        isVideo: true,
                       );
                     },
                   ),

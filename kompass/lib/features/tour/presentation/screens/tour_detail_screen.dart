@@ -16,7 +16,7 @@ import '../../../auth/data/models/user_model.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../data/models/tour_model.dart';
 import '../../providers/tour_providers.dart';
-import '../../../../core/constants/zego_constants.dart';
+import '../../../../services/calling/zego_call_service.dart';
 
 class TourDetailScreen extends ConsumerWidget {
   final String tourId;
@@ -808,12 +808,11 @@ class TourDetailScreen extends ConsumerWidget {
                 label: const Text('Video Call'),
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  final callId = ZegoConstants.directCallId(
-                    currentUser.userId,
-                    user.userId,
-                  );
-                  context.push(
-                    '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=true',
+                  ZegoCallService.instance.sendCallInvitation(
+                    context: context,
+                    targetUserId: user.userId,
+                    targetUserName: user.name,
+                    isVideo: true,
                   );
                 },
               ),
@@ -826,12 +825,11 @@ class TourDetailScreen extends ConsumerWidget {
                 label: const Text('Voice Call'),
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
-                  final callId = ZegoConstants.directCallId(
-                    currentUser.userId,
-                    user.userId,
-                  );
-                  context.push(
-                    '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=false',
+                  ZegoCallService.instance.sendCallInvitation(
+                    context: context,
+                    targetUserId: user.userId,
+                    targetUserName: user.name,
+                    isVideo: false,
                   );
                 },
               ),
@@ -1694,12 +1692,11 @@ class TourDetailScreen extends ConsumerWidget {
                                             tooltip: 'In-App Private Call',
                                             onSelected: (choice) {
                                               final isVideo = choice == 'video';
-                                              final callId = ZegoConstants.directCallId(
-                                                liveCurrentUser.userId,
-                                                user.userId,
-                                              );
-                                              context.push(
-                                                '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=$isVideo',
+                                              ZegoCallService.instance.sendCallInvitation(
+                                                context: context,
+                                                targetUserId: user.userId,
+                                                targetUserName: user.name,
+                                                isVideo: isVideo,
                                               );
                                             },
                                             itemBuilder: (ctx) => [
@@ -1808,12 +1805,11 @@ class TourDetailScreen extends ConsumerWidget {
                                               icon: const Icon(Icons.videocam, size: 13),
                                               label: const Text('Video', style: TextStyle(fontSize: 11)),
                                               onPressed: () {
-                                                final callId = ZegoConstants.directCallId(
-                                                  liveCurrentUser.userId,
-                                                  user.userId,
-                                                );
-                                                context.push(
-                                                  '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=true',
+                                                ZegoCallService.instance.sendCallInvitation(
+                                                  context: context,
+                                                  targetUserId: user.userId,
+                                                  targetUserName: user.name,
+                                                  isVideo: true,
                                                 );
                                               },
                                             ),
@@ -1828,12 +1824,11 @@ class TourDetailScreen extends ConsumerWidget {
                                               icon: const Icon(Icons.phone_in_talk, size: 13),
                                               label: const Text('Voice', style: TextStyle(fontSize: 11)),
                                               onPressed: () {
-                                                final callId = ZegoConstants.directCallId(
-                                                  liveCurrentUser.userId,
-                                                  user.userId,
-                                                );
-                                                context.push(
-                                                  '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=false',
+                                                ZegoCallService.instance.sendCallInvitation(
+                                                  context: context,
+                                                  targetUserId: user.userId,
+                                                  targetUserName: user.name,
+                                                  isVideo: false,
                                                 );
                                               },
                                             ),
