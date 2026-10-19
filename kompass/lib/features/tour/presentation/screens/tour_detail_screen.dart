@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/enums/tour_status.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -28,12 +29,13 @@ class TourDetailScreen extends ConsumerWidget {
 
     return tourAsync.when(
       data: (tour) {
+        final isAdmin = currentUser?.isAdmin == true;
         final isPrimaryGuide = currentUser != null &&
-            tour.isPrimaryGuide(currentUser.userId);
+            (tour.isPrimaryGuide(currentUser.userId) || isAdmin);
         final isGuestGuide = currentUser != null &&
             tour.isGuestGuide(currentUser.userId);
         final canManageTour = currentUser != null &&
-            tour.canManageTour(currentUser.userId);
+            (tour.canManageTour(currentUser.userId) || isAdmin);
         final guideUser = allUsers
             .where((u) => u.userId == tour.guideId)
             .firstOrNull;
@@ -59,6 +61,7 @@ class TourDetailScreen extends ConsumerWidget {
                         tour,
                         allUsers,
                         isPrimaryGuide: isPrimaryGuide,
+                        currentUser: currentUser,
                       ),
                     ),
                     if (tour.pendingRequestUserIds.isNotEmpty)
@@ -351,6 +354,22 @@ class TourDetailScreen extends ConsumerWidget {
                 icon: Icons.fact_check,
                 onTap: () => context.push('/tours/$tourId/attendance'),
               ),
+              _buildFeatureTile(
+                context,
+                title: 'Crew & Participant Roster (${tour.participantCount})',
+                subtitle: canManageTour
+                    ? 'Participant personal details, address, age & direct dialer'
+                    : 'View enrolled expedition companions',
+                icon: Icons.people_alt_outlined,
+                onTap: () => _showManageParticipantsSheet(
+                  context,
+                  ref,
+                  tour,
+                  allUsers,
+                  isPrimaryGuide: isPrimaryGuide,
+                  currentUser: currentUser,
+                ),
+              ),
               if (!isPrimaryGuide)
                 _buildFeatureTile(
                   context,
@@ -459,6 +478,322 @@ class TourDetailScreen extends ConsumerWidget {
         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
         onTap: onTap,
       ),
+    );
+  }
+
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final clean = phoneNumber.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (clean.isEmpty) {
+      AppToast.showWarning('No phone number provided.');
+      return;
+    }
+    final uri = Uri.parse('tel:$clean');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      AppToast.showError('Could not open phone dialer: $e');
+    }
+  }
+
+  void _showParticipantDetailsDialog(
+    BuildContext context,
+    UserModel user, {
+    required TourModel tour,
+    required UserModel? currentUser,
+  }) {
+    final canView = currentUser != null &&
+        (currentUser.isAdmin ||
+            tour.canManageTour(currentUser.userId) ||
+            currentUser.userId == user.userId);
+
+    if (!canView) {
+      AppToast.showWarning(
+        'Participant personal details are private to Tour Guides and Admins.',
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        final hasPhone = user.phoneNumber.trim().isNotEmpty;
+        final hasEmergency = user.emergencyContact.trim().isNotEmpty;
+        final hasAddress = user.address.trim().isNotEmpty;
+        final hasGender = user.gender.trim().isNotEmpty;
+        final hasAge = user.age != null;
+
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: AppColors.primaryGold,
+                backgroundImage: user.profileImage.isNotEmpty
+                    ? NetworkImage(user.profileImage)
+                    : null,
+                child: user.profileImage.isEmpty
+                    ? Text(
+                        user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: AppColors.textOnPrimary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.name,
+                      style: AppTextStyles.headlineMedium,
+                    ),
+                    Text(
+                      user.email,
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Personal Contact Number & Dialer Redirect
+                Text(
+                  'PERSONAL CONTACT',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.primaryGold,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.phone, color: AppColors.success, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              hasPhone ? user.phoneNumber : 'Not provided',
+                              style: AppTextStyles.labelLarge.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (hasPhone)
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 36),
+                          ),
+                          icon: const Icon(Icons.call, size: 16),
+                          label: const Text('Call'),
+                          onPressed: () => _makePhoneCall(user.phoneNumber),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 2. Emergency Contact & Dialer Redirect
+                Text(
+                  'EMERGENCY CONTACT',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.sosRed,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.emergency_outlined, color: AppColors.sosRed, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.emergencyContactName.isNotEmpty
+                                  ? user.emergencyContactName
+                                  : 'Emergency Contact',
+                              style: AppTextStyles.labelMedium.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              hasEmergency ? user.emergencyContact : 'Not provided',
+                              style: AppTextStyles.bodySmall.copyWith(
+                                color: hasEmergency
+                                    ? AppColors.textPrimary
+                                    : AppColors.textHint,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (hasEmergency)
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.sosRed,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            minimumSize: const Size(0, 36),
+                          ),
+                          icon: const Icon(Icons.phone_in_talk, size: 16),
+                          label: const Text('Call SOS'),
+                          onPressed: () => _makePhoneCall(user.emergencyContact),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // 3. Address & Demographics
+                Text(
+                  'DETAILS & RESIDENCE',
+                  style: AppTextStyles.labelSmall.copyWith(
+                    color: AppColors.primaryGold,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceVariant,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 18, color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Address',
+                                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                ),
+                                Text(
+                                  hasAddress ? user.address : 'Not specified',
+                                  style: AppTextStyles.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.wc_outlined, size: 18, color: AppColors.textSecondary),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Gender',
+                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                    ),
+                                    Text(
+                                      hasGender ? user.gender : 'Not specified',
+                                      style: AppTextStyles.bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                const Icon(Icons.cake_outlined, size: 18, color: AppColors.textSecondary),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Age',
+                                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                    ),
+                                    Text(
+                                      hasAge ? '${user.age} yrs' : 'Not specified',
+                                      style: AppTextStyles.bodyMedium,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -686,6 +1021,7 @@ class TourDetailScreen extends ConsumerWidget {
     TourModel initialTour,
     List<UserModel> allUsers, {
     required bool isPrimaryGuide,
+    UserModel? currentUser,
   }) {
     final emailController = TextEditingController();
     bool isSendingInvite = false;
@@ -701,6 +1037,13 @@ class TourDetailScreen extends ConsumerWidget {
                 sheetRef.watch(tourDetailProvider(initialTour.tourId)).valueOrNull ??
                     initialTour;
             final users = sheetRef.watch(allUsersProvider).valueOrNull ?? allUsers;
+            final liveCurrentUser =
+                sheetRef.watch(currentUserProvider).valueOrNull ?? currentUser;
+
+            final isAdmin = liveCurrentUser?.isAdmin == true;
+            final canManage = liveCurrentUser != null &&
+                (liveTour.canManageTour(liveCurrentUser.userId) || isAdmin);
+            final effectiveIsPrimaryGuide = isPrimaryGuide || isAdmin;
 
             final enrolledUsers = users
                 .where((u) => liveTour.participantIds.contains(u.userId))
@@ -730,263 +1073,268 @@ class TourDetailScreen extends ConsumerWidget {
                       ),
                       children: [
                         Text(
-                          'Participant & Guest Guide Management',
+                          canManage
+                              ? 'Participant & Guest Guide Management'
+                              : 'Tour Crew & Participants',
                           style: AppTextStyles.headlineLarge,
                         ),
                         const SizedBox(height: 12),
 
-                        // ── 1. Join by Code Approval Setting ──
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surfaceVariant,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: SwitchListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              liveTour.requireJoinApproval
-                                  ? 'Code Joinees: Require My Approval'
-                                  : 'Code Joinees: Admit Automatically',
-                              style: AppTextStyles.labelLarge,
+                        // ── Guide / Admin Management Section ──
+                        if (canManage) ...[
+                          // ── 1. Join by Code Approval Setting ──
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
                             ),
-                            subtitle: Text(
-                              liveTour.requireJoinApproval
-                                  ? 'Users entering the Tour Code send a join request for you to Accept or Decline'
-                                  : 'Anyone entering the Tour Code is admitted immediately',
-                              style: AppTextStyles.bodySmall,
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            value: liveTour.requireJoinApproval,
-                            activeColor: AppColors.primaryGold,
-                            onChanged: (val) async {
-                              await sheetRef
-                                  .read(tourControllerProvider.notifier)
-                                  .updateTour(
-                                    liveTour.copyWith(requireJoinApproval: val),
-                                  );
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // ── 2. Invite Participant by Email Search ──
-                        Text(
-                          'Invite Participant by Email',
-                          style: AppTextStyles.labelLarge,
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Search a registered user by their exact email address to send them a tour invitation:',
-                          style: AppTextStyles.bodySmall,
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: emailController,
-                                keyboardType: TextInputType.emailAddress,
-                                decoration: const InputDecoration(
-                                  labelText: 'Participant Email ID',
-                                  hintText: 'e.g. explorer@example.com',
-                                  prefixIcon: Icon(Icons.alternate_email),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                minimumSize: const Size(120, 54),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                              ),
-                              onPressed: isSendingInvite
-                                  ? null
-                                  : () async {
-                                      final email = emailController.text.trim();
-                                      if (email.isEmpty) {
-                                        AppToast.showWarning(
-                                          'Please enter an email address.',
-                                        );
-                                        return;
-                                      }
-                                      setSheetState(
-                                        () => isSendingInvite = true,
-                                      );
-                                      try {
-                                        final invitedUser = await sheetRef
-                                            .read(
-                                              tourControllerProvider.notifier,
-                                            )
-                                            .inviteUserByEmail(
-                                              liveTour.tourId,
-                                              email,
-                                            );
-                                        emailController.clear();
-                                        AppToast.showSuccess(
-                                          'Invitation sent to ${invitedUser.name} (${invitedUser.email})!',
-                                        );
-                                      } catch (e) {
-                                        final msg = e
-                                            .toString()
-                                            .replaceFirst('Exception: ', '');
-                                        AppToast.showError('Failed to send invite: $msg');
-                                      } finally {
-                                        setSheetState(
-                                          () => isSendingInvite = false,
-                                        );
-                                      }
-                                    },
-                              icon: isSendingInvite
-                                  ? const SizedBox(
-                                      width: 16,
-                                      height: 16,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.send_outlined, size: 18),
-                              label: const Text('Send Invite'),
-                            ),
-                          ],
-                        ),
-
-                        // ── 3. Pending Join Requests (Accept / Decline) ──
-                        if (liveTour.pendingRequestUserIds.isNotEmpty) ...[
-                          const Divider(height: 28),
-                          Text(
-                            'Pending Join Requests (${liveTour.pendingRequestUserIds.length})',
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: AppColors.warning,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          ...liveTour.pendingRequestUserIds.map((uid) {
-                            final reqUser = pendingUsers
-                                .where((u) => u.userId == uid)
-                                .firstOrNull;
-                            return ListTile(
+                            child: SwitchListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.person_add_alt_1,
-                                color: AppColors.warning,
+                              title: Text(
+                                liveTour.requireJoinApproval
+                                    ? 'Code Joinees: Require My Approval'
+                                    : 'Code Joinees: Admit Automatically',
+                                style: AppTextStyles.labelLarge,
                               ),
-                              title: Text(reqUser?.name ?? uid),
                               subtitle: Text(
-                                reqUser?.email ?? 'Requested via Tour Code',
+                                liveTour.requireJoinApproval
+                                    ? 'Users entering the Tour Code send a join request for you to Accept or Decline'
+                                    : 'Anyone entering the Tour Code is admitted immediately',
+                                style: AppTextStyles.bodySmall,
                               ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextButton(
-                                    onPressed: () async {
-                                      try {
-                                        await sheetRef
-                                            .read(
-                                              tourControllerProvider.notifier,
-                                            )
-                                            .respondToJoinRequest(
-                                              liveTour.tourId,
-                                              uid,
-                                              approve: false,
-                                            );
-                                        AppToast.showInfo(
-                                          'Declined join request from ${reqUser?.name ?? uid}.',
-                                        );
-                                      } catch (e) {
-                                        AppToast.showError('Failed to decline request: $e');
-                                      }
-                                    },
-                                    child: const Text(
-                                      'Decline',
-                                      style: TextStyle(color: AppColors.error),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.success,
-                                      minimumSize: const Size(74, 34),
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                      ),
-                                    ),
-                                    onPressed: () async {
-                                      try {
-                                        await sheetRef
-                                            .read(
-                                              tourControllerProvider.notifier,
-                                            )
-                                            .respondToJoinRequest(
-                                              liveTour.tourId,
-                                              uid,
-                                              approve: true,
-                                            );
-                                        AppToast.showSuccess(
-                                          'Accepted ${reqUser?.name ?? uid} into the tour!',
-                                        );
-                                      } catch (e) {
-                                        AppToast.showError('Failed to accept request: $e');
-                                      }
-                                    },
-                                    child: const Text('Accept'),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }),
-                        ],
+                              value: liveTour.requireJoinApproval,
+                              activeColor: AppColors.primaryGold,
+                              onChanged: (val) async {
+                                await sheetRef
+                                    .read(tourControllerProvider.notifier)
+                                    .updateTour(
+                                      liveTour.copyWith(requireJoinApproval: val),
+                                    );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 20),
 
-                        // ── 4. Pending Sent Invitations ──
-                        if (liveTour.invitedUserIds.isNotEmpty) ...[
-                          const Divider(height: 28),
+                          // ── 2. Invite Participant by Email Search ──
                           Text(
-                            'Sent Email Invitations (${liveTour.invitedUserIds.length})',
+                            'Invite Participant by Email',
                             style: AppTextStyles.labelLarge,
                           ),
                           const SizedBox(height: 6),
-                          ...liveTour.invitedUserIds.map((uid) {
-                            final invUser = invitedUsers
-                                .where((u) => u.userId == uid)
-                                .firstOrNull;
-                            return ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(
-                                Icons.mail_outline,
-                                color: AppColors.primaryGold,
-                              ),
-                              title: Text(invUser?.name ?? uid),
-                              subtitle: Text(
-                                '${invUser?.email ?? ''} • Pending acceptance',
-                              ),
-                              trailing: TextButton(
-                                onPressed: () async {
-                                  try {
-                                    await sheetRef
-                                        .read(tourControllerProvider.notifier)
-                                        .revokeInvite(liveTour.tourId, uid);
-                                    AppToast.showInfo(
-                                      'Invitation revoked for ${invUser?.name ?? uid}.',
-                                    );
-                                  } catch (e) {
-                                    AppToast.showError('Failed to revoke invitation: $e');
-                                  }
-                                },
-                                child: const Text(
-                                  'Revoke',
-                                  style: TextStyle(color: AppColors.error),
+                          Text(
+                            'Search a registered user by their exact email address to send them a tour invitation:',
+                            style: AppTextStyles.bodySmall,
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: emailController,
+                                  keyboardType: TextInputType.emailAddress,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Participant Email ID',
+                                    hintText: 'e.g. explorer@example.com',
+                                    prefixIcon: Icon(Icons.alternate_email),
+                                  ),
                                 ),
                               ),
-                            );
-                          }),
+                              const SizedBox(width: 10),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  minimumSize: const Size(120, 54),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                ),
+                                onPressed: isSendingInvite
+                                    ? null
+                                    : () async {
+                                        final email = emailController.text.trim();
+                                        if (email.isEmpty) {
+                                          AppToast.showWarning(
+                                            'Please enter an email address.',
+                                          );
+                                          return;
+                                        }
+                                        setSheetState(
+                                          () => isSendingInvite = true,
+                                        );
+                                        try {
+                                          final invitedUser = await sheetRef
+                                              .read(
+                                                tourControllerProvider.notifier,
+                                              )
+                                              .inviteUserByEmail(
+                                                liveTour.tourId,
+                                                email,
+                                              );
+                                          emailController.clear();
+                                          AppToast.showSuccess(
+                                            'Invitation sent to ${invitedUser.name} (${invitedUser.email})!',
+                                          );
+                                        } catch (e) {
+                                          final msg = e
+                                              .toString()
+                                              .replaceFirst('Exception: ', '');
+                                          AppToast.showError('Failed to send invite: $msg');
+                                        } finally {
+                                          setSheetState(
+                                            () => isSendingInvite = false,
+                                          );
+                                        }
+                                      },
+                                icon: isSendingInvite
+                                    ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Icon(Icons.send_outlined, size: 18),
+                                label: const Text('Send Invite'),
+                              ),
+                            ],
+                          ),
+
+                          // ── 3. Pending Join Requests (Accept / Decline) ──
+                          if (liveTour.pendingRequestUserIds.isNotEmpty) ...[
+                            const Divider(height: 28),
+                            Text(
+                              'Pending Join Requests (${liveTour.pendingRequestUserIds.length})',
+                              style: AppTextStyles.labelLarge.copyWith(
+                                color: AppColors.warning,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            ...liveTour.pendingRequestUserIds.map((uid) {
+                              final reqUser = pendingUsers
+                                  .where((u) => u.userId == uid)
+                                  .firstOrNull;
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.person_add_alt_1,
+                                  color: AppColors.warning,
+                                ),
+                                title: Text(reqUser?.name ?? uid),
+                                subtitle: Text(
+                                  reqUser?.email ?? 'Requested via Tour Code',
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextButton(
+                                      onPressed: () async {
+                                        try {
+                                          await sheetRef
+                                              .read(
+                                                tourControllerProvider.notifier,
+                                              )
+                                              .respondToJoinRequest(
+                                                liveTour.tourId,
+                                                uid,
+                                                approve: false,
+                                              );
+                                          AppToast.showInfo(
+                                            'Declined join request from ${reqUser?.name ?? uid}.',
+                                          );
+                                        } catch (e) {
+                                          AppToast.showError('Failed to decline request: $e');
+                                        }
+                                      },
+                                      child: const Text(
+                                        'Decline',
+                                        style: TextStyle(color: AppColors.error),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.success,
+                                        minimumSize: const Size(74, 34),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                      ),
+                                      onPressed: () async {
+                                        try {
+                                          await sheetRef
+                                              .read(
+                                                tourControllerProvider.notifier,
+                                              )
+                                              .respondToJoinRequest(
+                                                liveTour.tourId,
+                                                uid,
+                                                approve: true,
+                                              );
+                                          AppToast.showSuccess(
+                                            'Accepted ${reqUser?.name ?? uid} into the tour!',
+                                          );
+                                        } catch (e) {
+                                          AppToast.showError('Failed to accept request: $e');
+                                        }
+                                      },
+                                      child: const Text('Accept'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+
+                          // ── 4. Pending Sent Invitations ──
+                          if (liveTour.invitedUserIds.isNotEmpty) ...[
+                            const Divider(height: 28),
+                            Text(
+                              'Sent Email Invitations (${liveTour.invitedUserIds.length})',
+                              style: AppTextStyles.labelLarge,
+                            ),
+                            const SizedBox(height: 6),
+                            ...liveTour.invitedUserIds.map((uid) {
+                              final invUser = invitedUsers
+                                  .where((u) => u.userId == uid)
+                                  .firstOrNull;
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                leading: const Icon(
+                                  Icons.mail_outline,
+                                  color: AppColors.primaryGold,
+                                ),
+                                title: Text(invUser?.name ?? uid),
+                                subtitle: Text(
+                                  '${invUser?.email ?? ''} • Pending acceptance',
+                                ),
+                                trailing: TextButton(
+                                  onPressed: () async {
+                                    try {
+                                      await sheetRef
+                                          .read(tourControllerProvider.notifier)
+                                          .revokeInvite(liveTour.tourId, uid);
+                                      AppToast.showInfo(
+                                        'Invitation revoked for ${invUser?.name ?? uid}.',
+                                      );
+                                    } catch (e) {
+                                      AppToast.showError('Failed to revoke invitation: $e');
+                                    }
+                                  },
+                                  child: const Text(
+                                    'Revoke',
+                                    style: TextStyle(color: AppColors.error),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ],
+                          const Divider(height: 28),
                         ],
 
                         // ── 5. Enrolled Participants & Guest Guide Promotion ──
-                        const Divider(height: 28),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1004,7 +1352,7 @@ class TourDetailScreen extends ConsumerWidget {
                               ),
                           ],
                         ),
-                        if (isPrimaryGuide) ...[
+                        if (effectiveIsPrimaryGuide) ...[
                           const SizedBox(height: 4),
                           Text(
                             'Tip: Tap the shield button next to any participant to promote or revoke them as a Guest Guide.',
@@ -1055,127 +1403,469 @@ class TourDetailScreen extends ConsumerWidget {
                             return Column(
                               children: matchingEnrolled.map((user) {
                                 final isGuest = liveTour.isGuestGuide(user.userId);
-                                return ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  leading: CircleAvatar(
-                                    radius: 18,
-                                    backgroundColor: isGuest
-                                        ? AppColors.primaryGold.withValues(alpha: 0.2)
-                                        : AppColors.success.withValues(alpha: 0.15),
-                                    child: Icon(
-                                      isGuest ? Icons.shield : Icons.verified_user_outlined,
-                                      size: 18,
-                                      color: isGuest ? AppColors.primaryGold : AppColors.success,
+                                final isTourLeader = user.userId == liveTour.guideId;
+                                final isSelf = liveCurrentUser != null && liveCurrentUser.userId == user.userId;
+                                final canViewPersonalDetails = canManage || isSelf;
+
+                                final hasPhone = user.phoneNumber.trim().isNotEmpty;
+                                final hasEmergency = user.emergencyContact.trim().isNotEmpty;
+                                final hasAddress = user.address.trim().isNotEmpty;
+
+                                // ── PRIVACY ENFORCEMENT: Non-guide/non-admin viewing another participant ──
+                                if (!canViewPersonalDetails) {
+                                  return Card(
+                                    margin: const EdgeInsets.symmetric(vertical: 4),
+                                    color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: const BorderSide(color: AppColors.border, width: 0.8),
                                     ),
-                                  ),
-                                  title: Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(
-                                          user.name,
-                                          overflow: TextOverflow.ellipsis,
+                                    child: ListTile(
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                      leading: CircleAvatar(
+                                        radius: 18,
+                                        backgroundColor: isTourLeader
+                                            ? AppColors.primaryGold.withValues(alpha: 0.25)
+                                            : isGuest
+                                                ? AppColors.primaryGold.withValues(alpha: 0.15)
+                                                : AppColors.surface,
+                                        backgroundImage: user.profileImage.isNotEmpty
+                                            ? NetworkImage(user.profileImage)
+                                            : null,
+                                        child: user.profileImage.isEmpty
+                                            ? Icon(
+                                                isTourLeader
+                                                    ? Icons.star
+                                                    : isGuest
+                                                        ? Icons.shield
+                                                        : Icons.person_outline,
+                                                size: 18,
+                                                color: (isTourLeader || isGuest)
+                                                    ? AppColors.primaryGold
+                                                    : AppColors.textSecondary,
+                                              )
+                                            : null,
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Flexible(
+                                            child: Text(
+                                              user.name,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                          if (isTourLeader) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primaryGold,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                'Tour Guide',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ] else if (isGuest) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.primaryGold,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: const Text(
+                                                'Guest Guide',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                      subtitle: Text(
+                                        isTourLeader
+                                            ? 'Tour Guide'
+                                            : isGuest
+                                                ? 'Guest Guide'
+                                                : 'Expedition Member',
+                                        style: AppTextStyles.bodySmall.copyWith(
+                                          color: AppColors.textSecondary,
                                         ),
                                       ),
-                                      if (isGuest) ...[
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
+                                      trailing: const Tooltip(
+                                        message: 'Personal details are private to Tour Guides and Admins.',
+                                        child: Icon(
+                                          Icons.lock_outline,
+                                          size: 16,
+                                          color: AppColors.textHint,
+                                        ),
+                                      ),
+                                      onTap: () {
+                                        AppToast.showInfo(
+                                          'Participant personal details are private to Tour Guides and Admins.',
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }
+
+                                // ── AUTHORIZED (Admin, Guide, or Self): Full Expandable Card with Direct Dialer ──
+                                return Card(
+                                  margin: const EdgeInsets.symmetric(vertical: 4),
+                                  color: AppColors.surfaceVariant.withValues(alpha: 0.6),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                    side: const BorderSide(color: AppColors.border, width: 0.8),
+                                  ),
+                                  child: ExpansionTile(
+                                    tilePadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                    childrenPadding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+                                    leading: CircleAvatar(
+                                      radius: 18,
+                                      backgroundColor: isTourLeader
+                                          ? AppColors.primaryGold.withValues(alpha: 0.25)
+                                          : isGuest
+                                              ? AppColors.primaryGold.withValues(alpha: 0.2)
+                                              : AppColors.success.withValues(alpha: 0.15),
+                                      backgroundImage: user.profileImage.isNotEmpty
+                                          ? NetworkImage(user.profileImage)
+                                          : null,
+                                      child: user.profileImage.isEmpty
+                                          ? Icon(
+                                              isTourLeader
+                                                  ? Icons.star
+                                                  : isGuest
+                                                      ? Icons.shield
+                                                      : Icons.person_outline,
+                                              size: 18,
+                                              color: (isTourLeader || isGuest)
+                                                  ? AppColors.primaryGold
+                                                  : AppColors.success,
+                                            )
+                                          : null,
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            user.name,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontWeight: FontWeight.bold),
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.primaryGold,
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: const Text(
-                                            'Guest Guide',
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.black,
+                                        ),
+                                        if (isSelf) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryGold.withValues(alpha: 0.2),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: AppColors.primaryGold, width: 0.8),
                                             ),
+                                            child: const Text(
+                                              'You',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.primaryGold,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                        if (isTourLeader) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryGold,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              'Tour Guide',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                        ] else if (isGuest) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: AppColors.primaryGold,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: const Text(
+                                              'Guest Guide',
+                                              style: TextStyle(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(user.email, style: AppTextStyles.bodySmall),
+                                        if (hasPhone)
+                                          Row(
+                                            children: [
+                                              const Icon(Icons.phone, size: 12, color: AppColors.success),
+                                              const SizedBox(width: 4),
+                                              Text(
+                                                user.phoneNumber,
+                                                style: const TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w500),
+                                              ),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (hasPhone)
+                                          IconButton(
+                                            icon: const Icon(Icons.phone, color: AppColors.success, size: 20),
+                                            tooltip: 'Call ${user.name}',
+                                            onPressed: () => _makePhoneCall(user.phoneNumber),
+                                          ),
+                                        if (hasEmergency)
+                                          IconButton(
+                                            icon: const Icon(Icons.phone_in_talk, color: AppColors.sosRed, size: 20),
+                                            tooltip: 'Call Emergency Contact',
+                                            onPressed: () => _makePhoneCall(user.emergencyContact),
+                                          ),
+                                        IconButton(
+                                          icon: const Icon(Icons.info_outline, color: AppColors.primaryGold, size: 20),
+                                          tooltip: 'View Personal & Safety Details',
+                                          onPressed: () => _showParticipantDetailsDialog(
+                                            context,
+                                            user,
+                                            tour: liveTour,
+                                            currentUser: liveCurrentUser,
                                           ),
                                         ),
                                       ],
-                                    ],
-                                  ),
-                                  subtitle: Text(user.email),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                    ),
                                     children: [
-                                      if (isPrimaryGuide)
-                                        OutlinedButton.icon(
-                                          style: OutlinedButton.styleFrom(
-                                            foregroundColor: isGuest
-                                                ? AppColors.warning
-                                                : AppColors.primaryGold,
-                                            side: BorderSide(
-                                              color: isGuest
-                                                  ? AppColors.warning
-                                                  : AppColors.primaryGold,
+                                      const Divider(height: 12),
+                                      // 1. Personal Phone & Call row
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.phone_outlined, size: 16, color: AppColors.primaryGold),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('Contact Number', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                                Text(
+                                                  hasPhone ? user.phoneNumber : 'Not provided',
+                                                  style: AppTextStyles.bodySmall.copyWith(
+                                                    fontWeight: hasPhone ? FontWeight.w600 : FontWeight.normal,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 6,
+                                          ),
+                                          if (hasPhone)
+                                            ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.success,
+                                                foregroundColor: Colors.white,
+                                                minimumSize: const Size(0, 30),
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              ),
+                                              icon: const Icon(Icons.call, size: 13),
+                                              label: const Text('Call', style: TextStyle(fontSize: 11)),
+                                              onPressed: () => _makePhoneCall(user.phoneNumber),
                                             ),
-                                            minimumSize: const Size(0, 32),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // 2. Address row
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(Icons.location_on_outlined, size: 16, color: AppColors.primaryGold),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('Address', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                                Text(
+                                                  hasAddress ? user.address : 'Not provided',
+                                                  style: AppTextStyles.bodySmall,
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                          icon: Icon(
-                                            isGuest
-                                                ? Icons.remove_moderator_outlined
-                                                : Icons.add_moderator_outlined,
-                                            size: 15,
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // 3. Gender & Age row
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.badge_outlined, size: 16, color: AppColors.primaryGold),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text('Gender & Age', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                                                Text(
+                                                  'Gender: ${user.gender.isNotEmpty ? user.gender : "Not provided"} • Age: ${user.age != null ? "${user.age} yrs" : "Not provided"}',
+                                                  style: AppTextStyles.bodySmall,
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                          label: Text(
-                                            isGuest
-                                                ? 'Revoke Guide'
-                                                : 'Make Guest Guide',
-                                            style: const TextStyle(fontSize: 11),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+
+                                      // 4. Emergency Contact row
+                                      Row(
+                                        children: [
+                                          const Icon(Icons.emergency_outlined, size: 16, color: AppColors.sosRed),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  'Emergency: ${user.emergencyContactName.isNotEmpty ? user.emergencyContactName : "Contact"}',
+                                                  style: const TextStyle(fontSize: 10, color: AppColors.sosRed, fontWeight: FontWeight.bold),
+                                                ),
+                                                Text(
+                                                  hasEmergency ? user.emergencyContact : 'Not provided',
+                                                  style: AppTextStyles.bodySmall.copyWith(
+                                                    fontWeight: hasEmergency ? FontWeight.w600 : FontWeight.normal,
+                                                    color: hasEmergency ? AppColors.textPrimary : AppColors.textHint,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                          onPressed: () async {
-                                            try {
-                                              await sheetRef
-                                                  .read(tourControllerProvider.notifier)
-                                                  .toggleGuestGuide(
-                                                    liveTour.tourId,
-                                                    user.userId,
-                                                    isGuestGuide: !isGuest,
+                                          if (hasEmergency)
+                                            ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.sosRed,
+                                                foregroundColor: Colors.white,
+                                                minimumSize: const Size(0, 30),
+                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                              ),
+                                              icon: const Icon(Icons.phone_in_talk, size: 13),
+                                              label: const Text('Call SOS', style: TextStyle(fontSize: 11)),
+                                              onPressed: () => _makePhoneCall(user.emergencyContact),
+                                            ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+
+                                      // 5. Guide Controls (only for primary guide or admin, cannot promote/remove themselves)
+                                      if (effectiveIsPrimaryGuide && user.userId != liveCurrentUser.userId)
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.end,
+                                          children: [
+                                            OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: isGuest
+                                                    ? AppColors.warning
+                                                    : AppColors.primaryGold,
+                                                side: BorderSide(
+                                                  color: isGuest
+                                                      ? AppColors.warning
+                                                      : AppColors.primaryGold,
+                                                ),
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 4,
+                                                ),
+                                                minimumSize: const Size(0, 28),
+                                              ),
+                                              icon: Icon(
+                                                isGuest
+                                                    ? Icons.remove_moderator_outlined
+                                                    : Icons.add_moderator_outlined,
+                                                size: 13,
+                                              ),
+                                              label: Text(
+                                                isGuest
+                                                    ? 'Revoke Guide'
+                                                    : 'Make Guest Guide',
+                                                style: const TextStyle(fontSize: 10),
+                                              ),
+                                              onPressed: () async {
+                                                try {
+                                                  await sheetRef
+                                                      .read(tourControllerProvider.notifier)
+                                                      .toggleGuestGuide(
+                                                        liveTour.tourId,
+                                                        user.userId,
+                                                        isGuestGuide: !isGuest,
+                                                      );
+                                                  if (!isGuest) {
+                                                    AppToast.showSuccess(
+                                                      '${user.name} promoted to Guest Guide!',
+                                                    );
+                                                  } else {
+                                                    AppToast.showInfo(
+                                                      'Guest Guide status revoked for ${user.name}.',
+                                                    );
+                                                  }
+                                                } catch (e) {
+                                                  AppToast.showError(
+                                                    'Failed to update Guest Guide status: $e',
                                                   );
-                                              if (!isGuest) {
-                                                AppToast.showSuccess(
-                                                  '${user.name} promoted to Guest Guide!',
-                                                );
-                                              } else {
-                                                AppToast.showInfo(
-                                                  'Guest Guide status revoked for ${user.name}.',
-                                                );
-                                              }
-                                            } catch (e) {
-                                              AppToast.showError(
-                                                'Failed to update Guest Guide status: $e',
-                                              );
-                                            }
-                                          },
-                                        ),
-                                      if (isPrimaryGuide)
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.remove_circle_outline,
-                                            color: AppColors.error,
-                                          ),
-                                          tooltip: 'Remove from Tour',
-                                          onPressed: () async {
-                                            try {
-                                              await sheetRef
-                                                  .read(tourControllerProvider.notifier)
-                                                  .removeParticipant(liveTour.tourId, user.userId);
-                                              AppToast.showInfo(
-                                                'Removed ${user.name} from the tour.',
-                                              );
-                                            } catch (e) {
-                                              AppToast.showError('Failed to remove participant: $e');
-                                            }
-                                          },
+                                                }
+                                              },
+                                            ),
+                                            const SizedBox(width: 8),
+                                            TextButton.icon(
+                                              style: TextButton.styleFrom(
+                                                foregroundColor: AppColors.error,
+                                                minimumSize: const Size(0, 28),
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                                              ),
+                                              icon: const Icon(
+                                                Icons.remove_circle_outline,
+                                                size: 13,
+                                              ),
+                                              label: const Text('Remove', style: TextStyle(fontSize: 10)),
+                                              onPressed: () async {
+                                                try {
+                                                  await sheetRef
+                                                      .read(tourControllerProvider.notifier)
+                                                      .removeParticipant(liveTour.tourId, user.userId);
+                                                  AppToast.showInfo(
+                                                    'Removed ${user.name} from the tour.',
+                                                  );
+                                                } catch (e) {
+                                                  AppToast.showError('Failed to remove participant: $e');
+                                                }
+                                              },
+                                            ),
+                                          ],
                                         ),
                                     ],
                                   ),

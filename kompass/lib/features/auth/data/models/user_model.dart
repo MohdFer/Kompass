@@ -14,6 +14,14 @@ abstract class UserModel with _$UserModel {
     required String email,
     required String role,
     @Default('') String profileImage,
+    @Default('') String phoneNumber,
+    @Default(false) bool isPhoneVerified,
+    @Default('') String address,
+    @Default('') String gender,
+    int? age,
+    @Default('') String emergencyContact,
+    @Default('') String emergencyContactName,
+    @Default(false) bool isEmergencyContactVerified,
     DateTime? createdAt,
   }) = _UserModel;
 
@@ -25,9 +33,20 @@ abstract class UserModel with _$UserModel {
   /// Convenience constructor from a Firestore DocumentSnapshot.
   static UserModel fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
+    int? parsedAge;
+    if (data['age'] != null) {
+      if (data['age'] is int) {
+        parsedAge = data['age'] as int;
+      } else if (data['age'] is num) {
+        parsedAge = (data['age'] as num).toInt();
+      } else if (data['age'] is String) {
+        parsedAge = int.tryParse(data['age'] as String);
+      }
+    }
     return UserModel.fromJson({
       ...data,
       'userId': doc.id,
+      'age': parsedAge,
       'createdAt': (data['createdAt'] as Timestamp?)?.toDate().toIso8601String(),
     });
   }
@@ -41,6 +60,18 @@ abstract class UserModel with _$UserModel {
         : FieldValue.serverTimestamp();
     return json;
   }
+
+  /// Contact phone accessor
+  String get contact => phoneNumber;
+
+  /// Check if the user has an emergency contact configured
+  bool get hasEmergencyContact => emergencyContact.trim().isNotEmpty;
+
+  /// Check if the user has personal contact configured
+  bool get hasContact => phoneNumber.trim().isNotEmpty;
+
+  /// Check if the user has address configured
+  bool get hasAddress => address.trim().isNotEmpty;
 
   /// Get the parsed UserRole enum.
   UserRole get userRole => UserRole.fromString(role);

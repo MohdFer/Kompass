@@ -26,6 +26,14 @@ mixin _$UserModel {
   String get email => throw _privateConstructorUsedError;
   String get role => throw _privateConstructorUsedError;
   String get profileImage => throw _privateConstructorUsedError;
+  String get phoneNumber => throw _privateConstructorUsedError;
+  bool get isPhoneVerified => throw _privateConstructorUsedError;
+  String get address => throw _privateConstructorUsedError;
+  String get gender => throw _privateConstructorUsedError;
+  int? get age => throw _privateConstructorUsedError;
+  String get emergencyContact => throw _privateConstructorUsedError;
+  String get emergencyContactName => throw _privateConstructorUsedError;
+  bool get isEmergencyContactVerified => throw _privateConstructorUsedError;
   DateTime? get createdAt => throw _privateConstructorUsedError;
 
   /// Serializes this UserModel to a JSON map.
@@ -49,6 +57,14 @@ abstract class $UserModelCopyWith<$Res> {
     String email,
     String role,
     String profileImage,
+    String phoneNumber,
+    bool isPhoneVerified,
+    String address,
+    String gender,
+    int? age,
+    String emergencyContact,
+    String emergencyContactName,
+    bool isEmergencyContactVerified,
     DateTime? createdAt,
   });
 }
@@ -73,6 +89,14 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
     Object? email = null,
     Object? role = null,
     Object? profileImage = null,
+    Object? phoneNumber = null,
+    Object? isPhoneVerified = null,
+    Object? address = null,
+    Object? gender = null,
+    Object? age = freezed,
+    Object? emergencyContact = null,
+    Object? emergencyContactName = null,
+    Object? isEmergencyContactVerified = null,
     Object? createdAt = freezed,
   }) {
     return _then(
@@ -97,6 +121,38 @@ class _$UserModelCopyWithImpl<$Res, $Val extends UserModel>
                 ? _value.profileImage
                 : profileImage // ignore: cast_nullable_to_non_nullable
                       as String,
+            phoneNumber: null == phoneNumber
+                ? _value.phoneNumber
+                : phoneNumber // ignore: cast_nullable_to_non_nullable
+                      as String,
+            isPhoneVerified: null == isPhoneVerified
+                ? _value.isPhoneVerified
+                : isPhoneVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
+            address: null == address
+                ? _value.address
+                : address // ignore: cast_nullable_to_non_nullable
+                      as String,
+            gender: null == gender
+                ? _value.gender
+                : gender // ignore: cast_nullable_to_non_nullable
+                      as String,
+            age: freezed == age
+                ? _value.age
+                : age // ignore: cast_nullable_to_non_nullable
+                      as int?,
+            emergencyContact: null == emergencyContact
+                ? _value.emergencyContact
+                : emergencyContact // ignore: cast_nullable_to_non_nullable
+                      as String,
+            emergencyContactName: null == emergencyContactName
+                ? _value.emergencyContactName
+                : emergencyContactName // ignore: cast_nullable_to_non_nullable
+                      as String,
+            isEmergencyContactVerified: null == isEmergencyContactVerified
+                ? _value.isEmergencyContactVerified
+                : isEmergencyContactVerified // ignore: cast_nullable_to_non_nullable
+                      as bool,
             createdAt: freezed == createdAt
                 ? _value.createdAt
                 : createdAt // ignore: cast_nullable_to_non_nullable
@@ -122,6 +178,14 @@ abstract class _$$UserModelImplCopyWith<$Res>
     String email,
     String role,
     String profileImage,
+    String phoneNumber,
+    bool isPhoneVerified,
+    String address,
+    String gender,
+    int? age,
+    String emergencyContact,
+    String emergencyContactName,
+    bool isEmergencyContactVerified,
     DateTime? createdAt,
   });
 }
@@ -145,6 +209,14 @@ class __$$UserModelImplCopyWithImpl<$Res>
     Object? email = null,
     Object? role = null,
     Object? profileImage = null,
+    Object? phoneNumber = null,
+    Object? isPhoneVerified = null,
+    Object? address = null,
+    Object? gender = null,
+    Object? age = freezed,
+    Object? emergencyContact = null,
+    Object? emergencyContactName = null,
+    Object? isEmergencyContactVerified = null,
     Object? createdAt = freezed,
   }) {
     return _then(
@@ -169,6 +241,38 @@ class __$$UserModelImplCopyWithImpl<$Res>
             ? _value.profileImage
             : profileImage // ignore: cast_nullable_to_non_nullable
                   as String,
+        phoneNumber: null == phoneNumber
+            ? _value.phoneNumber
+            : phoneNumber // ignore: cast_nullable_to_non_nullable
+                  as String,
+        isPhoneVerified: null == isPhoneVerified
+            ? _value.isPhoneVerified
+            : isPhoneVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
+        address: null == address
+            ? _value.address
+            : address // ignore: cast_nullable_to_non_nullable
+                  as String,
+        gender: null == gender
+            ? _value.gender
+            : gender // ignore: cast_nullable_to_non_nullable
+                  as String,
+        age: freezed == age
+            ? _value.age
+            : age // ignore: cast_nullable_to_non_nullable
+                  as int?,
+        emergencyContact: null == emergencyContact
+            ? _value.emergencyContact
+            : emergencyContact // ignore: cast_nullable_to_non_nullable
+                  as String,
+        emergencyContactName: null == emergencyContactName
+            ? _value.emergencyContactName
+            : emergencyContactName // ignore: cast_nullable_to_non_nullable
+                  as String,
+        isEmergencyContactVerified: null == isEmergencyContactVerified
+            ? _value.isEmergencyContactVerified
+            : isEmergencyContactVerified // ignore: cast_nullable_to_non_nullable
+                  as bool,
         createdAt: freezed == createdAt
             ? _value.createdAt
             : createdAt // ignore: cast_nullable_to_non_nullable
@@ -187,6 +291,14 @@ class _$UserModelImpl extends _UserModel {
     required this.email,
     required this.role,
     this.profileImage = '',
+    this.phoneNumber = '',
+    this.isPhoneVerified = false,
+    this.address = '',
+    this.gender = '',
+    this.age,
+    this.emergencyContact = '',
+    this.emergencyContactName = '',
+    this.isEmergencyContactVerified = false,
     this.createdAt,
   }) : super._();
 
@@ -205,11 +317,34 @@ class _$UserModelImpl extends _UserModel {
   @JsonKey()
   final String profileImage;
   @override
+  @JsonKey()
+  final String phoneNumber;
+  @override
+  @JsonKey()
+  final bool isPhoneVerified;
+  @override
+  @JsonKey()
+  final String address;
+  @override
+  @JsonKey()
+  final String gender;
+  @override
+  final int? age;
+  @override
+  @JsonKey()
+  final String emergencyContact;
+  @override
+  @JsonKey()
+  final String emergencyContactName;
+  @override
+  @JsonKey()
+  final bool isEmergencyContactVerified;
+  @override
   final DateTime? createdAt;
 
   @override
   String toString() {
-    return 'UserModel(userId: $userId, name: $name, email: $email, role: $role, profileImage: $profileImage, createdAt: $createdAt)';
+    return 'UserModel(userId: $userId, name: $name, email: $email, role: $role, profileImage: $profileImage, phoneNumber: $phoneNumber, isPhoneVerified: $isPhoneVerified, address: $address, gender: $gender, age: $age, emergencyContact: $emergencyContact, emergencyContactName: $emergencyContactName, isEmergencyContactVerified: $isEmergencyContactVerified, createdAt: $createdAt)';
   }
 
   @override
@@ -223,6 +358,23 @@ class _$UserModelImpl extends _UserModel {
             (identical(other.role, role) || other.role == role) &&
             (identical(other.profileImage, profileImage) ||
                 other.profileImage == profileImage) &&
+            (identical(other.phoneNumber, phoneNumber) ||
+                other.phoneNumber == phoneNumber) &&
+            (identical(other.isPhoneVerified, isPhoneVerified) ||
+                other.isPhoneVerified == isPhoneVerified) &&
+            (identical(other.address, address) || other.address == address) &&
+            (identical(other.gender, gender) || other.gender == gender) &&
+            (identical(other.age, age) || other.age == age) &&
+            (identical(other.emergencyContact, emergencyContact) ||
+                other.emergencyContact == emergencyContact) &&
+            (identical(other.emergencyContactName, emergencyContactName) ||
+                other.emergencyContactName == emergencyContactName) &&
+            (identical(
+                  other.isEmergencyContactVerified,
+                  isEmergencyContactVerified,
+                ) ||
+                other.isEmergencyContactVerified ==
+                    isEmergencyContactVerified) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -236,6 +388,14 @@ class _$UserModelImpl extends _UserModel {
     email,
     role,
     profileImage,
+    phoneNumber,
+    isPhoneVerified,
+    address,
+    gender,
+    age,
+    emergencyContact,
+    emergencyContactName,
+    isEmergencyContactVerified,
     createdAt,
   );
 
@@ -260,6 +420,14 @@ abstract class _UserModel extends UserModel {
     required final String email,
     required final String role,
     final String profileImage,
+    final String phoneNumber,
+    final bool isPhoneVerified,
+    final String address,
+    final String gender,
+    final int? age,
+    final String emergencyContact,
+    final String emergencyContactName,
+    final bool isEmergencyContactVerified,
     final DateTime? createdAt,
   }) = _$UserModelImpl;
   const _UserModel._() : super._();
@@ -277,6 +445,22 @@ abstract class _UserModel extends UserModel {
   String get role;
   @override
   String get profileImage;
+  @override
+  String get phoneNumber;
+  @override
+  bool get isPhoneVerified;
+  @override
+  String get address;
+  @override
+  String get gender;
+  @override
+  int? get age;
+  @override
+  String get emergencyContact;
+  @override
+  String get emergencyContactName;
+  @override
+  bool get isEmergencyContactVerified;
   @override
   DateTime? get createdAt;
 

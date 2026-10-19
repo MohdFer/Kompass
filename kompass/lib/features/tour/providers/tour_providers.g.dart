@@ -180,7 +180,7 @@ class _TourDetailProviderElement
   String get tourId => (origin as TourDetailProvider).tourId;
 }
 
-String _$tourControllerHash() => r'250154d61702250804f25aecf4898b8db30ba88a';
+String _$tourControllerHash() => r'6f9abc4efd129d4774cbc1ceb71495e80a61b4dd';
 
 /// See also [TourController].
 @ProviderFor(TourController)

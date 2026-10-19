@@ -12,7 +12,20 @@ abstract class AuthRepository {
   User? get currentUser;
   Future<UserModel> signInWithEmailAndPassword(String email, String password);
   Future<UserModel> signInWithGoogle();
-  Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, String role);
+  Future<UserModel> registerWithEmailAndPassword(
+    String name,
+    String email,
+    String password,
+    String role, {
+    String phoneNumber = '',
+    bool isPhoneVerified = false,
+    String address = '',
+    String gender = '',
+    int? age,
+    String emergencyContact = '',
+    String emergencyContactName = '',
+    bool isEmergencyContactVerified = false,
+  });
   Future<void> signOut();
   Future<void> sendPasswordResetEmail(String email);
   Future<void> sendEmailVerification();
@@ -57,7 +70,20 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, String role) async {
+  Future<UserModel> registerWithEmailAndPassword(
+    String name,
+    String email,
+    String password,
+    String role, {
+    String phoneNumber = '',
+    bool isPhoneVerified = false,
+    String address = '',
+    String gender = '',
+    int? age,
+    String emergencyContact = '',
+    String emergencyContactName = '',
+    bool isEmergencyContactVerified = false,
+  }) async {
     try {
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -76,6 +102,14 @@ class FirebaseAuthRepository implements AuthRepository {
         name: name,
         email: email,
         role: role,
+        phoneNumber: phoneNumber,
+        isPhoneVerified: isPhoneVerified,
+        address: address,
+        gender: gender,
+        age: age,
+        emergencyContact: emergencyContact,
+        emergencyContactName: emergencyContactName,
+        isEmergencyContactVerified: isEmergencyContactVerified,
         createdAt: DateTime.now(),
       );
 

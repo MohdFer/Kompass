@@ -211,7 +211,7 @@ class __$$LocationModelImplCopyWithImpl<$Res>
             : visibleToEveryone // ignore: cast_nullable_to_non_nullable
                   as bool,
         visibleToUserIds: null == visibleToUserIds
-            ? _value.visibleToUserIds
+            ? _value._visibleToUserIds
             : visibleToUserIds // ignore: cast_nullable_to_non_nullable
                   as List<String>,
       ),
@@ -260,7 +260,8 @@ class _$LocationModelImpl extends _LocationModel {
   @override
   @JsonKey()
   List<String> get visibleToUserIds {
-    if (_visibleToUserIds is EqualUnmodifiableListView) return _visibleToUserIds;
+    if (_visibleToUserIds is EqualUnmodifiableListView)
+      return _visibleToUserIds;
     // ignore: implicit_dynamic_type
     return EqualUnmodifiableListView(_visibleToUserIds);
   }
@@ -289,8 +290,10 @@ class _$LocationModelImpl extends _LocationModel {
                 other.userName == userName) &&
             (identical(other.visibleToEveryone, visibleToEveryone) ||
                 other.visibleToEveryone == visibleToEveryone) &&
-            const DeepCollectionEquality()
-                .equals(other._visibleToUserIds, _visibleToUserIds));
+            const DeepCollectionEquality().equals(
+              other._visibleToUserIds,
+              _visibleToUserIds,
+            ));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)

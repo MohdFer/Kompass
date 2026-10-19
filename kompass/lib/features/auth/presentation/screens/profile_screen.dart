@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/constants/country_codes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_toast.dart';
@@ -11,6 +12,7 @@ import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
 import '../../../../core/widgets/kompass_loading.dart';
+import '../../../../core/widgets/phone_input_field.dart';
 import '../../../../services/notifications/notification_service.dart';
 import '../../../../services/notifications/web_notification_helper.dart';
 import '../../../../services/permissions/app_permission_service.dart';
@@ -28,6 +30,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _avatarUrlController;
+  late TextEditingController _phoneController;
+  late TextEditingController _addressController;
+  late TextEditingController _ageController;
+  late TextEditingController _emergencyNameController;
+  late TextEditingController _emergencyPhoneController;
+  String? _selectedGender;
+  String _selectedCountryCode = CountryCodes.defaultCode;
+  String _emergencyCountryCode = CountryCodes.defaultCode;
   bool _locationConsent = false;
   bool _initialized = false;
 
@@ -36,6 +46,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.initState();
     _nameController = TextEditingController();
     _avatarUrlController = TextEditingController();
+    _phoneController = TextEditingController();
+    _addressController = TextEditingController();
+    _ageController = TextEditingController();
+    _emergencyNameController = TextEditingController();
+    _emergencyPhoneController = TextEditingController();
     _locationConsent = HiveService.instance.isLocationSharingEnabled;
   }
 
@@ -43,6 +58,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _avatarUrlController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _ageController.dispose();
+    _emergencyNameController.dispose();
+    _emergencyPhoneController.dispose();
     super.dispose();
   }
 
@@ -211,6 +231,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (!_initialized) {
             _nameController.text = user.name;
             _avatarUrlController.text = user.profileImage;
+
+            final parsedPhone = CountryCodes.parse(user.phoneNumber);
+            _selectedCountryCode = parsedPhone.code;
+            _phoneController.text = parsedPhone.number;
+
+            _addressController.text = user.address;
+            _ageController.text = user.age != null ? user.age.toString() : '';
+            _selectedGender = user.gender.isNotEmpty ? user.gender : null;
+            _emergencyNameController.text = user.emergencyContactName;
+
+            final parsedEmergency = CountryCodes.parse(user.emergencyContact);
+            _emergencyCountryCode = parsedEmergency.code;
+            _emergencyPhoneController.text = parsedEmergency.number;
+
             _initialized = true;
           }
 
@@ -281,7 +315,122 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             prefixIcon: Icon(Icons.image_outlined),
                           ),
                         ),
+                        const SizedBox(height: 20),
+                        const Divider(color: AppColors.border),
+                        const SizedBox(height: 12),
+
+                        // ── Personal Contact & Safety Info (For Tour Guides) ──
+                        Row(
+                          children: [
+                            const Icon(Icons.badge_outlined, color: AppColors.primaryGold, size: 20),
+                            const SizedBox(width: 8),
+                            Text('Expedition & Safety Details', style: AppTextStyles.titleMedium),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'When you join tour trips, your Tour Guide can view these contact & safety details to assist you.',
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.textSecondary),
+                        ),
                         const SizedBox(height: 16),
+
+                        // Contact Phone Number with Country Code
+                        PhoneInputField(
+                          controller: _phoneController,
+                          selectedCountryCode: _selectedCountryCode,
+                          onCountryCodeChanged: (code) =>
+                              setState(() => _selectedCountryCode = code),
+                          labelText: 'Personal Contact Number',
+                          prefixIcon: Icons.phone_outlined,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Address
+                        TextFormField(
+                          controller: _addressController,
+                          decoration: const InputDecoration(
+                            labelText: 'Address',
+                            hintText: 'City, State or Residential Address',
+                            prefixIcon: Icon(Icons.location_on_outlined),
+                          ),
+                          keyboardType: TextInputType.streetAddress,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Gender & Age Row
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: DropdownButtonFormField<String>(
+                                value: _selectedGender,
+                                decoration: const InputDecoration(
+                                  labelText: 'Gender',
+                                  prefixIcon: Icon(Icons.wc_outlined),
+                                ),
+                                items: const [
+                                  DropdownMenuItem(value: 'Male', child: Text('Male')),
+                                  DropdownMenuItem(value: 'Female', child: Text('Female')),
+                                  DropdownMenuItem(value: 'Non-binary', child: Text('Non-binary')),
+                                  DropdownMenuItem(value: 'Other', child: Text('Other')),
+                                  DropdownMenuItem(value: 'Prefer not to say', child: Text('Prefer not to say')),
+                                ],
+                                onChanged: (val) => setState(() => _selectedGender = val),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              flex: 2,
+                              child: TextFormField(
+                                controller: _ageController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Age',
+                                  hintText: 'e.g. 28',
+                                  prefixIcon: Icon(Icons.cake_outlined),
+                                ),
+                                keyboardType: TextInputType.number,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Emergency Contact Section
+                        Row(
+                          children: [
+                            const Icon(Icons.emergency_outlined, color: AppColors.sosRed, size: 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Emergency Contact',
+                              style: AppTextStyles.labelMedium.copyWith(
+                                color: AppColors.sosRed,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _emergencyNameController,
+                          decoration: const InputDecoration(
+                            labelText: 'Emergency Contact Name / Relationship',
+                            hintText: 'e.g. Jane Doe (Spouse) or Parent',
+                            prefixIcon: Icon(Icons.person_pin_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        PhoneInputField(
+                          controller: _emergencyPhoneController,
+                          selectedCountryCode: _emergencyCountryCode,
+                          onCountryCodeChanged: (code) =>
+                              setState(() => _emergencyCountryCode = code),
+                          labelText: 'Emergency Phone Number',
+                          prefixIcon: Icons.contact_phone_outlined,
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(color: AppColors.border),
+                        const SizedBox(height: 8),
+
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           title: const Text('GPS Location Sharing Consent'),
@@ -407,9 +556,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           isLoading: authState.isLoading,
                           onPressed: () async {
                             if (_formKey.currentState!.validate()) {
+                              final phone = CountryCodes.formatFull(
+                                _selectedCountryCode,
+                                _phoneController.text.trim(),
+                              );
+                              final emergencyPhone = CountryCodes.formatFull(
+                                _emergencyCountryCode,
+                                _emergencyPhoneController.text.trim(),
+                              );
+
+                              final age = int.tryParse(_ageController.text.trim());
                               final updated = user.copyWith(
                                 name: _nameController.text.trim(),
                                 profileImage: _avatarUrlController.text.trim(),
+                                phoneNumber: phone,
+                                isPhoneVerified: phone.isNotEmpty,
+                                address: _addressController.text.trim(),
+                                gender: _selectedGender ?? '',
+                                age: age,
+                                emergencyContact: emergencyPhone,
+                                emergencyContactName: _emergencyNameController.text.trim(),
+                                isEmergencyContactVerified: false,
                               );
                               try {
                                 await ref

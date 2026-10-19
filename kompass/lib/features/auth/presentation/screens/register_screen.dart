@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../core/constants/country_codes.dart';
 import '../../../../core/enums/user_role.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
@@ -11,6 +12,7 @@ import '../../../../core/utils/app_toast.dart';
 import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
+import '../../../../core/widgets/phone_input_field.dart';
 import '../../providers/auth_providers.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -25,6 +27,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _ageController = TextEditingController();
+  final _emergencyNameController = TextEditingController();
+  final _emergencyPhoneController = TextEditingController();
+  String? _selectedGender;
+  String _selectedCountryCode = CountryCodes.defaultCode;
+  String _emergencyCountryCode = CountryCodes.defaultCode;
   final UserRole _selectedRole = UserRole.participant;
   bool _obscurePassword = true;
 
@@ -33,18 +43,42 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    _ageController.dispose();
+    _emergencyNameController.dispose();
+    _emergencyPhoneController.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate()) {
+      final phone = CountryCodes.formatFull(
+        _selectedCountryCode,
+        _phoneController.text.trim(),
+      );
+      final emergencyPhone = CountryCodes.formatFull(
+        _emergencyCountryCode,
+        _emergencyPhoneController.text.trim(),
+      );
+
       // Prompt phone/browser password manager (e.g. Google Password Manager) to save new credentials
       TextInput.finishAutofillContext(shouldSave: true);
+      final age = int.tryParse(_ageController.text.trim());
+
       await ref.read(authControllerProvider.notifier).register(
-            _nameController.text.trim(),
-            _emailController.text.trim(),
-            _passwordController.text.trim(),
-            _selectedRole.label,
+            name: _nameController.text.trim(),
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+            role: _selectedRole.label,
+            phoneNumber: phone,
+            isPhoneVerified: phone.isNotEmpty,
+            address: _addressController.text.trim(),
+            gender: _selectedGender ?? '',
+            age: age,
+            emergencyContact: emergencyPhone,
+            emergencyContactName: _emergencyNameController.text.trim(),
+            isEmergencyContactVerified: false,
           );
       if (!mounted) return;
       if (!ref.read(authControllerProvider).hasError) {
@@ -180,6 +214,129 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                               onEditingComplete: () =>
                                   TextInput.finishAutofillContext(),
                               onFieldSubmitted: (_) => _submit(),
+                            ),
+                            const SizedBox(height: 20),
+                            Theme(
+                              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: ExpansionTile(
+                                  initiallyExpanded: false,
+                                  tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                  childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                                  leading: const Icon(Icons.badge_outlined, color: AppColors.primaryGold),
+                                  title: const Text(
+                                    'Personal & Safety Info (Optional)',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  subtitle: const Text(
+                                    'Helps your Tour Guide with contacts, address, age & emergency safety',
+                                    style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  ),
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    // Contact Phone Number with Country Code
+                                    PhoneInputField(
+                                      controller: _phoneController,
+                                      selectedCountryCode: _selectedCountryCode,
+                                      onCountryCodeChanged: (code) =>
+                                          setState(() => _selectedCountryCode = code),
+                                      labelText: 'Personal Contact Number',
+                                      prefixIcon: Icons.phone_outlined,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Address
+                                    TextFormField(
+                                      controller: _addressController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Address',
+                                        hintText: 'City, State or Residential Address',
+                                        prefixIcon: Icon(Icons.location_on_outlined),
+                                      ),
+                                      keyboardType: TextInputType.streetAddress,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Gender & Age Row
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          flex: 3,
+                                          child: DropdownButtonFormField<String>(
+                                            value: _selectedGender,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Gender',
+                                              prefixIcon: Icon(Icons.wc_outlined),
+                                            ),
+                                            items: const [
+                                              DropdownMenuItem(value: 'Male', child: Text('Male')),
+                                              DropdownMenuItem(value: 'Female', child: Text('Female')),
+                                              DropdownMenuItem(value: 'Non-binary', child: Text('Non-binary')),
+                                              DropdownMenuItem(value: 'Other', child: Text('Other')),
+                                              DropdownMenuItem(value: 'Prefer not to say', child: Text('Prefer not to say')),
+                                            ],
+                                            onChanged: (val) => setState(() => _selectedGender = val),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          flex: 2,
+                                          child: TextFormField(
+                                            controller: _ageController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Age',
+                                              hintText: 'e.g. 28',
+                                              prefixIcon: Icon(Icons.cake_outlined),
+                                            ),
+                                            keyboardType: TextInputType.number,
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // Emergency Contact Section
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.emergency_outlined, color: AppColors.sosRed, size: 16),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'Emergency Contact',
+                                          style: AppTextStyles.labelSmall.copyWith(
+                                            color: AppColors.sosRed,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    TextFormField(
+                                      controller: _emergencyNameController,
+                                      decoration: const InputDecoration(
+                                        labelText: 'Contact Name / Relationship',
+                                        hintText: 'e.g. Jane Doe (Spouse) or Parent',
+                                        prefixIcon: Icon(Icons.person_pin_outlined),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    PhoneInputField(
+                                      controller: _emergencyPhoneController,
+                                      selectedCountryCode: _emergencyCountryCode,
+                                      onCountryCodeChanged: (code) =>
+                                          setState(() => _emergencyCountryCode = code),
+                                      labelText: 'Emergency Phone Number',
+                                      prefixIcon: Icons.contact_phone_outlined,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 32),
                             KompassButton(

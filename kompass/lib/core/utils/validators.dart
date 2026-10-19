@@ -56,11 +56,43 @@ class Validators {
     if (value == null || value.trim().isEmpty) {
       return 'Tour name is required';
     }
-    if (value.trim().length < 3) {
-      return 'Tour name must be at least 3 characters';
-    }
     if (value.trim().length > 100) {
       return 'Tour name must be less than 100 characters';
+    }
+    return null;
+  }
+
+  /// Validates phone number format based on country code.
+  /// If optional (default) and empty, returns null.
+  /// For India (+91): expects a 10-digit number starting with 6, 7, 8, or 9.
+  /// For other countries: expects 6 to 15 digits.
+  static String? validatePhoneNumber(
+    String? value, {
+    String countryCode = '+91',
+    bool isRequired = false,
+  }) {
+    if (value == null || value.trim().isEmpty) {
+      if (isRequired) return 'Phone number is required';
+      return null;
+    }
+
+    final digits = value.replaceAll(RegExp(r'\D'), '').trim();
+    if (digits.isEmpty) {
+      if (isRequired) return 'Phone number is required';
+      return null;
+    }
+
+    if (countryCode == '+91') {
+      if (digits.length != 10) {
+        return 'Please enter a valid 10-digit Indian mobile number';
+      }
+      if (!RegExp(r'^[6-9]\d{9}$').hasMatch(digits)) {
+        return 'Indian mobile numbers must start with 6, 7, 8, or 9';
+      }
+    } else {
+      if (digits.length < 6 || digits.length > 15) {
+        return 'Please enter a valid phone number (6 to 15 digits)';
+      }
     }
     return null;
   }

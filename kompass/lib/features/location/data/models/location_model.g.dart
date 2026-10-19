@@ -18,7 +18,8 @@ _$LocationModelImpl _$$LocationModelImplFromJson(Map<String, dynamic> json) =>
           : DateTime.parse(json['timestamp'] as String),
       userName: json['userName'] as String? ?? '',
       visibleToEveryone: json['visibleToEveryone'] as bool? ?? true,
-      visibleToUserIds: (json['visibleToUserIds'] as List<dynamic>?)
+      visibleToUserIds:
+          (json['visibleToUserIds'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           const <String>[],

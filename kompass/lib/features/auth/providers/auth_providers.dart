@@ -64,10 +64,36 @@ class AuthController extends _$AuthController {
     }
   }
 
-  Future<void> register(String name, String email, String password, String role) async {
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    required String role,
+    String phoneNumber = '',
+    bool isPhoneVerified = false,
+    String address = '',
+    String gender = '',
+    int? age,
+    String emergencyContact = '',
+    String emergencyContactName = '',
+    bool isEmergencyContactVerified = false,
+  }) async {
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard<void>(() async {
-      await ref.read(authRepositoryProvider).registerWithEmailAndPassword(name, email, password, role);
+      await ref.read(authRepositoryProvider).registerWithEmailAndPassword(
+            name,
+            email,
+            password,
+            role,
+            phoneNumber: phoneNumber,
+            isPhoneVerified: isPhoneVerified,
+            address: address,
+            gender: gender,
+            age: age,
+            emergencyContact: emergencyContact,
+            emergencyContactName: emergencyContactName,
+            isEmergencyContactVerified: isEmergencyContactVerified,
+          );
     });
     if (_mounted) {
       state = result;

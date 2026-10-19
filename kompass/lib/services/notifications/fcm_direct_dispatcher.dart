@@ -26,8 +26,16 @@ class FcmDirectDispatcher {
   Future<bool> initialize() async {
     if (_isInitialized && _rsaKey != null) return true;
 
+    // Direct Service Account key signing is strictly disabled on Web for security reasons.
+    // Real-time notifications on web are handled via Firestore streaming and the Web Push API.
+    if (kIsWeb) return false;
+
     try {
       final jsonStr = await rootBundle.loadString('assets/service_account.json');
+      if (jsonStr.trim().startsWith('<')) {
+        // Returned HTML (e.g. index.html SPA rewrite fallback), not valid JSON
+        return false;
+      }
       final jsonMap = jsonDecode(jsonStr) as Map<String, dynamic>;
 
       _projectId = jsonMap['project_id'] as String?;
@@ -52,6 +60,8 @@ class FcmDirectDispatcher {
 
   /// Get or refresh a valid short-lived Google OAuth2 access token.
   Future<String?> _getAccessToken() async {
+    if (kIsWeb) return null;
+
     final now = DateTime.now().toUtc();
     if (_cachedAccessToken != null && _tokenExpiry != null && now.isBefore(_tokenExpiry!)) {
       return _cachedAccessToken;
@@ -116,6 +126,12 @@ class FcmDirectDispatcher {
     String? messageId,
     Map<String, String>? extraData,
   }) async {
+    if (kIsWeb) {
+      // Direct service account push is disabled on client-side web.
+      // Notifications are handled in real-time via Firestore listeners.
+      return false;
+    }
+
     try {
       final token = await _getAccessToken();
       if (token == null || _projectId == null) {
