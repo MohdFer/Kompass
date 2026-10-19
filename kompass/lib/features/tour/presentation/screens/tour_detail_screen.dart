@@ -1688,6 +1688,43 @@ class TourDetailScreen extends ConsumerWidget {
                                     trailing: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
+                                        if (liveCurrentUser.userId != user.userId)
+                                          PopupMenuButton<String>(
+                                            icon: const Icon(Icons.phone_in_talk, color: AppColors.primaryGold, size: 20),
+                                            tooltip: 'In-App Private Call',
+                                            onSelected: (choice) {
+                                              final isVideo = choice == 'video';
+                                              final callId = ZegoConstants.directCallId(
+                                                liveCurrentUser.userId,
+                                                user.userId,
+                                              );
+                                              context.push(
+                                                '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=$isVideo',
+                                              );
+                                            },
+                                            itemBuilder: (ctx) => [
+                                              const PopupMenuItem(
+                                                value: 'voice',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(Icons.phone_in_talk, size: 18, color: AppColors.primaryGold),
+                                                    SizedBox(width: 8),
+                                                    Text('Voice Call'),
+                                                  ],
+                                                ),
+                                              ),
+                                              const PopupMenuItem(
+                                                value: 'video',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(Icons.videocam, size: 18, color: AppColors.primaryGold),
+                                                    SizedBox(width: 8),
+                                                    Text('Video Call'),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         if (hasPhone)
                                           IconButton(
                                             icon: const Icon(Icons.phone, color: AppColors.success, size: 20),
@@ -1748,6 +1785,62 @@ class TourDetailScreen extends ConsumerWidget {
                                         ],
                                       ),
                                       const SizedBox(height: 8),
+
+                                      // 1b. In-App Direct Calling (VoIP) row
+                                      if (liveCurrentUser.userId != user.userId) ...[
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.headset_mic_outlined, size: 16, color: AppColors.primaryGold),
+                                            const SizedBox(width: 8),
+                                            const Expanded(
+                                              child: Text(
+                                                'In-App Direct Call',
+                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                                              ),
+                                            ),
+                                            OutlinedButton.icon(
+                                              style: OutlinedButton.styleFrom(
+                                                side: const BorderSide(color: AppColors.primaryGold),
+                                                foregroundColor: AppColors.primaryGold,
+                                                minimumSize: const Size(0, 30),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              ),
+                                              icon: const Icon(Icons.videocam, size: 13),
+                                              label: const Text('Video', style: TextStyle(fontSize: 11)),
+                                              onPressed: () {
+                                                final callId = ZegoConstants.directCallId(
+                                                  liveCurrentUser.userId,
+                                                  user.userId,
+                                                );
+                                                context.push(
+                                                  '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=true',
+                                                );
+                                              },
+                                            ),
+                                            const SizedBox(width: 6),
+                                            ElevatedButton.icon(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: AppColors.primaryGold,
+                                                foregroundColor: Colors.black,
+                                                minimumSize: const Size(0, 30),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              ),
+                                              icon: const Icon(Icons.phone_in_talk, size: 13),
+                                              label: const Text('Voice', style: TextStyle(fontSize: 11)),
+                                              onPressed: () {
+                                                final callId = ZegoConstants.directCallId(
+                                                  liveCurrentUser.userId,
+                                                  user.userId,
+                                                );
+                                                context.push(
+                                                  '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=false',
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                      ],
 
                                       // 2. Address row
                                       Row(
