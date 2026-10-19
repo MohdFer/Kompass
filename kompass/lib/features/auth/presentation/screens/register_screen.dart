@@ -48,7 +48,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
       if (!mounted) return;
       if (!ref.read(authControllerProvider).hasError) {
-        AppToast.showSuccess('Welcome to Kompass! Account created.');
+        AppToast.showSuccess(
+          'Account created! A verification link was sent to your email.',
+        );
       }
     }
   }

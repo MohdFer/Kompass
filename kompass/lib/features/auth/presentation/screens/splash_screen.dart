@@ -85,7 +85,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const KompassLogoMark(size: 64),
+                const KompassLogoMark(size: 72, hasCurvedBorder: true),
                 const SizedBox(height: 20),
                 Text(
                   'KOMPASS',

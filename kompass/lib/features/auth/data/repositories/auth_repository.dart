@@ -15,6 +15,8 @@ abstract class AuthRepository {
   Future<UserModel> registerWithEmailAndPassword(String name, String email, String password, String role);
   Future<void> signOut();
   Future<void> sendPasswordResetEmail(String email);
+  Future<void> sendEmailVerification();
+  Future<void> linkPassword(String newPassword);
   Future<UserModel?> getUserData(String uid);
   Future<void> updateUserProfile(UserModel user);
   Stream<List<UserModel>> watchAllUsers();
@@ -61,6 +63,13 @@ class FirebaseAuthRepository implements AuthRepository {
         email: email,
         password: password,
       );
+
+      // Verify email on account creation to protect credentials and confirm ownership
+      try {
+        await userCredential.user?.sendEmailVerification();
+      } catch (_) {
+        // Verification email failure should not abort account creation
+      }
 
       final userModel = UserModel(
         userId: userCredential.user!.uid,
@@ -166,6 +175,57 @@ class FirebaseAuthRepository implements AuthRepository {
       await _auth.sendPasswordResetEmail(email: email);
     } on FirebaseAuthException catch (e) {
       throw AuthException(e.message ?? 'Failed to send reset email');
+    }
+  }
+
+  @override
+  Future<void> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException('No active user found.');
+    }
+    try {
+      await user.sendEmailVerification();
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(e.message ?? 'Failed to send verification email.');
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw AuthException('An unexpected error occurred: $e');
+    }
+  }
+
+  @override
+  Future<void> linkPassword(String newPassword) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw const AuthException('No active user found.');
+    }
+    final email = user.email;
+    if (email == null || email.isEmpty) {
+      throw const AuthException('No email address associated with this account.');
+    }
+
+    try {
+      final credential = EmailAuthProvider.credential(
+        email: email,
+        password: newPassword,
+      );
+      // Link the password credential to the existing user so both Google and Password work
+      await user.linkWithCredential(credential);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'provider-already-linked') {
+        // If the password provider is already attached, update the existing password
+        await user.updatePassword(newPassword);
+      } else if (e.code == 'requires-recent-login') {
+        throw const AuthException(
+          'For security, please log out and log back in before updating your password.',
+        );
+      } else {
+        throw AuthException(e.message ?? 'Failed to set password.');
+      }
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw AuthException('An unexpected error occurred: $e');
     }
   }
 

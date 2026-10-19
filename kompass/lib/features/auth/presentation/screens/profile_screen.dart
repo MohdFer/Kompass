@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
 import '../../../../core/utils/app_toast.dart';
+import '../../../../core/utils/validators.dart';
 import '../../../../core/widgets/kompass_app_bar.dart';
 import '../../../../core/widgets/kompass_button.dart';
 import '../../../../core/widgets/kompass_card.dart';
@@ -41,6 +43,150 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.dispose();
   }
 
+  Future<void> _showSetPasswordDialog(
+    BuildContext context, {
+    required bool isUpdating,
+    required String email,
+  }) async {
+    final formKey = GlobalKey<FormState>();
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool obscurePassword = true;
+    bool obscureConfirm = true;
+    bool isSubmitting = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: !isSubmitting,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Text(
+              isUpdating ? 'Change Account Password' : 'Link / Set Password',
+              style: AppTextStyles.headlineLarge,
+            ),
+            content: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isUpdating
+                          ? 'Enter a new password for $email.'
+                          : 'Set a password for $email. This allows you to sign in using either Google or your email and password directly.',
+                      style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: passwordController,
+                      decoration: InputDecoration(
+                        labelText: 'New Password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              obscurePassword = !obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      obscureText: obscurePassword,
+                      validator: Validators.validatePassword,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: confirmPasswordController,
+                      decoration: InputDecoration(
+                        labelText: 'Confirm Password',
+                        prefixIcon: const Icon(Icons.lock_reset),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            obscureConfirm
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              obscureConfirm = !obscureConfirm;
+                            });
+                          },
+                        ),
+                      ),
+                      obscureText: obscureConfirm,
+                      validator: (val) =>
+                          Validators.confirmPassword(val, passwordController.text),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGold,
+                  foregroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        if (formKey.currentState!.validate()) {
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            await ref
+                                .read(authControllerProvider.notifier)
+                                .linkPassword(passwordController.text.trim());
+                            if (!context.mounted) return;
+                            Navigator.of(dialogCtx).pop();
+                            AppToast.showSuccess(
+                              isUpdating
+                                  ? 'Password updated successfully!'
+                                  : 'Password set! You can now log in with either Google or your password.',
+                            );
+                            setState(() {});
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            AppToast.showError(e.toString(), context: context);
+                          }
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      )
+                    : Text(isUpdating ? 'Update Password' : 'Save Password'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
@@ -53,6 +199,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           if (user == null) {
             return const Center(child: Text('Not signed in'));
           }
+          final firebaseUser = FirebaseAuth.instance.currentUser;
+          final providers = firebaseUser?.providerData.map((p) => p.providerId).toList() ?? [];
+          final isGoogleLinked = providers.contains('google.com');
+          final isPasswordLinked = providers.contains('password');
+          final isEmailVerified = firebaseUser?.emailVerified ?? false;
+
           if (!_initialized) {
             _nameController.text = user.name;
             _avatarUrlController.text = user.profileImage;
@@ -192,6 +344,202 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                KompassCard(
+                  margin: EdgeInsets.zero,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.security,
+                            color: AppColors.primaryGold,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Login Methods & Security',
+                            style: AppTextStyles.headlineMedium,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Manage your sign-in methods. You can keep both Google Sign-In and Password authentication active at the same time for this account.',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Email Verification Row
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          isEmailVerified
+                              ? Icons.mark_email_read
+                              : Icons.mark_email_unread_outlined,
+                          color: isEmailVerified ? Colors.green : AppColors.primaryGold,
+                        ),
+                        title: Text(
+                          'Email Verification',
+                          style: AppTextStyles.titleMedium,
+                        ),
+                        subtitle: Text(
+                          isEmailVerified
+                              ? 'Verified'
+                              : 'Unverified — verify to secure and link your credentials',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isEmailVerified
+                                ? Colors.green
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        trailing: isEmailVerified
+                            ? const Chip(
+                                label: Text(
+                                  'Verified',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                                backgroundColor: Color(0x1F4CAF50),
+                              )
+                            : OutlinedButton(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primaryGold,
+                                  side: const BorderSide(
+                                    color: AppColors.primaryGold,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                ),
+                                onPressed: () async {
+                                  try {
+                                    await ref
+                                        .read(authControllerProvider.notifier)
+                                        .sendEmailVerification();
+                                    AppToast.showSuccess(
+                                      'Verification email sent to ${user.email}. Please check your inbox.',
+                                    );
+                                  } catch (e) {
+                                    AppToast.showError(
+                                      'Failed to send verification: $e',
+                                    );
+                                  }
+                                },
+                                child: const Text('Verify Email'),
+                              ),
+                      ),
+                      const Divider(color: AppColors.border, height: 16),
+                      // Google Sign-In Row
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(
+                          Icons.g_mobiledata,
+                          color: Color(0xFF4285F4),
+                          size: 32,
+                        ),
+                        title: Text(
+                          'Google Sign-In',
+                          style: AppTextStyles.titleMedium,
+                        ),
+                        subtitle: Text(
+                          isGoogleLinked
+                              ? 'Connected (${user.email})'
+                              : 'Not linked to Google',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isGoogleLinked
+                                ? Colors.green
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                        trailing: isGoogleLinked
+                            ? const Chip(
+                                label: Text(
+                                  'Connected',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.green,
+                                  ),
+                                ),
+                                backgroundColor: Color(0x1F4CAF50),
+                              )
+                            : const Text(
+                                'Not linked',
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                ),
+                              ),
+                      ),
+                      const Divider(color: AppColors.border, height: 16),
+                      // Email & Password Row
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          isPasswordLinked
+                              ? Icons.lock_outline
+                              : Icons.lock_open_outlined,
+                          color: isPasswordLinked
+                              ? Colors.green
+                              : AppColors.primaryGold,
+                        ),
+                        title: Text(
+                          'Email & Password Login',
+                          style: AppTextStyles.titleMedium,
+                        ),
+                        subtitle: Text(
+                          isPasswordLinked
+                              ? 'Password set (both Google & password logins work)'
+                              : 'No password set (Google login only)',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: isPasswordLinked
+                                ? AppColors.textSecondary
+                                : AppColors.primaryGold,
+                          ),
+                        ),
+                        trailing: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isPasswordLinked
+                                ? AppColors.surfaceVariant
+                                : AppColors.primaryGold,
+                            foregroundColor: isPasswordLinked
+                                ? AppColors.textPrimary
+                                : Colors.black,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () => _showSetPasswordDialog(
+                            context,
+                            isUpdating: isPasswordLinked,
+                            email: user.email,
+                          ),
+                          child: Text(
+                            isPasswordLinked
+                                ? 'Change Password'
+                                : 'Set Password',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),

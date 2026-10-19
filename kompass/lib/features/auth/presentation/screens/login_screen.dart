@@ -96,7 +96,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const KompassLogoMark(size: 64),
+                const KompassLogoMark(size: 72, hasCurvedBorder: true),
                 const SizedBox(height: 18),
                 Text(
                   'KOMPASS',

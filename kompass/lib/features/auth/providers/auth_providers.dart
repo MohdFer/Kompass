@@ -92,6 +92,27 @@ class AuthController extends _$AuthController {
     }
   }
 
+  Future<void> sendEmailVerification() async {
+    state = const AsyncValue.loading();
+    final result = await AsyncValue.guard(
+      () => ref.read(authRepositoryProvider).sendEmailVerification(),
+    );
+    if (_mounted) {
+      state = result;
+    }
+  }
+
+  Future<void> linkPassword(String newPassword) async {
+    state = const AsyncValue.loading();
+    final result = await AsyncValue.guard<void>(() async {
+      await ref.read(authRepositoryProvider).linkPassword(newPassword);
+      ref.invalidate(currentUserProvider);
+    });
+    if (_mounted) {
+      state = result;
+    }
+  }
+
   Future<void> updateProfile(UserModel updatedUser) async {
     state = const AsyncValue.loading();
     final result = await AsyncValue.guard(() async {

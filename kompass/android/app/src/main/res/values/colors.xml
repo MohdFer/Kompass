@@ -2,4 +2,5 @@
 <resources>
     <!-- Matches AppColors.background (Lumora pure black) -->
     <color name="splash_bg">#000000</color>
+    <color name="ic_launcher_background">#060606</color>
 </resources>

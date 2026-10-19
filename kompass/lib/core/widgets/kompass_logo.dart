@@ -2,25 +2,57 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
 /// Minimalist geometric compass brand mark used across Splash, Auth, and App headers.
+/// Supports an optional curvy bordered badge container ([hasCurvedBorder]).
 class KompassLogoMark extends StatelessWidget {
   const KompassLogoMark({
     this.size = 64.0,
+    this.hasCurvedBorder = false,
+    this.borderRadius,
     super.key,
   });
 
   final double size;
+  final bool hasCurvedBorder;
+  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
+    final mark = SizedBox(
+      width: hasCurvedBorder ? size * 0.68 : size,
+      height: hasCurvedBorder ? size * 0.68 : size,
+      child: const CustomPaint(
         painter: _MinimalCompassPainter(
           primaryColor: AppColors.primaryNeon,
           secondaryColor: Colors.white,
         ),
       ),
+    );
+
+    if (!hasCurvedBorder) {
+      return mark;
+    }
+
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(size * 0.22);
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: const Color(0xFF060606),
+        borderRadius: effectiveRadius,
+        border: Border.all(
+          color: AppColors.primaryNeon.withValues(alpha: 0.45),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryNeon.withValues(alpha: 0.14),
+            blurRadius: 16,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: Center(child: mark),
     );
   }
 }
