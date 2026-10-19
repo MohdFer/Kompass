@@ -49,5 +49,9 @@
 	<array>
 		<string>tel</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>KOMPASS needs camera access for video calling and QR code scanning.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>KOMPASS needs microphone access for live tour commentary and emergency voice calls.</string>
 </dict>
 </plist>

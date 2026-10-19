@@ -16,6 +16,7 @@ import '../../../auth/data/models/user_model.dart';
 import '../../../auth/providers/auth_providers.dart';
 import '../../data/models/tour_model.dart';
 import '../../providers/tour_providers.dart';
+import '../../../../core/constants/zego_constants.dart';
 
 class TourDetailScreen extends ConsumerWidget {
   final String tourId;
@@ -379,6 +380,16 @@ class TourDetailScreen extends ConsumerWidget {
                   icon: Icons.qr_code_2,
                   onTap: () => context.push('/tours/$tourId/qr'),
                 ),
+              _buildFeatureTile(
+                context,
+                title: 'Live Voice Tour & Commentary',
+                subtitle: canManageTour
+                    ? 'Broadcast live audio commentary to all participants'
+                    : 'Listen to live tour guide commentary & speak',
+                icon: Icons.record_voice_over,
+                iconColor: AppColors.primaryGold,
+                onTap: () => context.push('/tours/$tourId/voice-tour'),
+              ),
               _buildFeatureTile(
                 context,
                 title: 'Group Chat',
@@ -787,6 +798,44 @@ class TourDetailScreen extends ConsumerWidget {
             ),
           ),
           actions: [
+            if (currentUser.userId != user.userId) ...[
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: AppColors.primaryGold),
+                  foregroundColor: AppColors.primaryGold,
+                ),
+                icon: const Icon(Icons.videocam, size: 16),
+                label: const Text('Video Call'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  final callId = ZegoConstants.directCallId(
+                    currentUser.userId,
+                    user.userId,
+                  );
+                  context.push(
+                    '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=true',
+                  );
+                },
+              ),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryGold,
+                  foregroundColor: Colors.black,
+                ),
+                icon: const Icon(Icons.phone_in_talk, size: 16),
+                label: const Text('Voice Call'),
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  final callId = ZegoConstants.directCallId(
+                    currentUser.userId,
+                    user.userId,
+                  );
+                  context.push(
+                    '/call?callId=$callId&targetUserName=${Uri.encodeComponent(user.name)}&isVideo=false',
+                  );
+                },
+              ),
+            ],
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
               child: const Text('Close'),

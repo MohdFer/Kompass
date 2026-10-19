@@ -23,6 +23,8 @@ import '../features/messaging/presentation/screens/announcements_screen.dart';
 import '../features/location/presentation/screens/map_screen.dart';
 import '../features/documents/presentation/screens/document_list_screen.dart';
 import '../features/emergency/presentation/screens/sos_screen.dart';
+import '../features/calling/presentation/screens/tour_voice_room_screen.dart';
+import '../features/calling/presentation/screens/call_screen.dart';
 import 'route_names.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -201,7 +203,42 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               return SOSScreen(tourId: tourId);
             },
           ),
+          GoRoute(
+            path: 'voice-tour',
+            name: RouteNames.voiceTour,
+            builder: (context, state) {
+              final tourId = state.pathParameters['tourId']!;
+              return TourVoiceRoomScreen(tourId: tourId);
+            },
+          ),
         ],
+      ),
+
+      // ── 1-on-1 & Emergency Calling Route ──
+      GoRoute(
+        path: '/call',
+        name: RouteNames.call,
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          final callId = state.uri.queryParameters['callId'] ??
+              extra['callId'] as String? ??
+              'emergency_call';
+          final targetUserName = state.uri.queryParameters['targetUserName'] ??
+              extra['targetUserName'] as String? ??
+              'User';
+          final isVideo = (state.uri.queryParameters['isVideo'] == 'true') ||
+              (extra['isVideo'] == true);
+          final isEmergency =
+              (state.uri.queryParameters['isEmergency'] == 'true') ||
+                  (extra['isEmergency'] == true);
+
+          return CallScreen(
+            callId: callId,
+            targetUserName: targetUserName,
+            isVideo: isVideo,
+            isEmergency: isEmergency,
+          );
+        },
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

@@ -31,4 +31,6 @@ class RouteNames {
   static const String map = 'map';
   static const String documents = 'documents';
   static const String sos = 'sos';
+  static const String voiceTour = 'voice-tour';
+  static const String call = 'call';
 }
