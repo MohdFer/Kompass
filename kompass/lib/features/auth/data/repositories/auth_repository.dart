@@ -94,7 +94,10 @@ class FirebaseAuthRepository implements AuthRepository {
         googleProvider.addScope('profile');
         userCredential = await _auth.signInWithPopup(googleProvider);
       } else {
-        final GoogleSignIn googleSignIn = GoogleSignIn();
+        final GoogleSignIn googleSignIn = GoogleSignIn(
+          serverClientId:
+              '802033087048-ngvotubu6od1ltrk4sutcr4tj2t4rkiv.apps.googleusercontent.com',
+        );
         final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
         if (googleUser == null) {
           throw const AuthException('Google sign-in was cancelled.');

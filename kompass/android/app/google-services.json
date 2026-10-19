@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "802033087048",
+    "firebase_url": "https://kompass-maverick-default-rtdb.firebaseio.com",
     "project_id": "kompass-maverick",
     "storage_bucket": "kompass-maverick.firebasestorage.app"
   },
@@ -12,7 +13,20 @@
           "package_name": "com.kompass.kompass"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "802033087048-5kekhvqp0cfrdr2msadgq0mv75e54h0t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kompass.kompass",
+            "certificate_hash": "def896b2293cec7fe2fb32e731bf63e46e6861b1"
+          }
+        },
+        {
+          "client_id": "802033087048-ngvotubu6od1ltrk4sutcr4tj2t4rkiv.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCeN1f6Z7qkH8HIyxWEhZq-ZzdhGUEWYbA"
@@ -20,7 +34,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "802033087048-ngvotubu6od1ltrk4sutcr4tj2t4rkiv.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "802033087048-9d0bfk9fg7dedvb4meqc88e5ia3msbig.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kompass.kompass"
+              }
+            }
+          ]
         }
       }
     }
